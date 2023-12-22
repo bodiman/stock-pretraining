@@ -12,5 +12,5 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 
 To view a complete list of the stocks available via the Tiingo API, run
 ```
-import data_collector
+<p style="color:red;">import data_collector</p>
 ```
