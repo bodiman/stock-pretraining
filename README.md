@@ -27,6 +27,7 @@ To add data to your database, run
 ```
 data_collector.collect_data(
     connection = database_connection,
+    tickers=["SPY", "QQQ"],
     between = (
         date(2020, 1, 1),
         date(2022, 1, 1)
