@@ -12,5 +12,27 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 
 To view a complete list of the stocks available via the Tiingo API, run
 ```
-<p style="color:red;">import data_collector</p>
+import data_collector
+data_collector.available_data(
+    between = (
+        date(2020, 1, 1),
+        date(2022, 1, 1)
+    ),
+    minimum_data_points = 1000
+)
 ```
+
+To add data to your database, run
+
+```
+data_collector.collect_data(
+    connection = database_connection,
+    between = (
+        date(2020, 1, 1),
+        date(2022, 1, 1)
+    ),
+    minimum_data_points = 1000
+)
+```
+
+Be able to add stock data to a PostgreSQL database 
