@@ -10,6 +10,10 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 
 # # Getting Started
 
+To set up the postgres database, run 
+
+```psql -U <username> -d <database> -a -f schema.sql```
+
 To view a complete list of the stocks available via the Tiingo API, run
 ```
 import data_collector
@@ -35,5 +39,7 @@ data_collector.collect_data(
     minimum_data_points = 1000
 )
 ```
+
+To 
 
 Be able to add stock data to a PostgreSQL database 
