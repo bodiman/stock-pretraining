@@ -1,19 +1,16 @@
-#load environmental variables
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from ..environment import get_env_variable
 
 #request libraries
 import httpx
 import asyncio
 
-class data_collector():
+class DataCollector():
     def __init__(self, api_key=None, database_url=None):
         if api_key == None:
-            api_key = os.getenv("TIINGO_API_KEY")
+            api_key = get_env_variable("TIINGO_API_KEY")
 
         if database_url == None:
-            database_url = os.getenv("database_url")
+            database_url = get_env_variable("database_url")
         
         assert api_key is not None, "You must either specify an API key or include a TIINGO_API_KEY as an environment variable."
         assert database_url is not None, "You must either specify a database url or include a database_url as an environment variable."
