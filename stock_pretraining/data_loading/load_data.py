@@ -4,6 +4,12 @@ from ..environment import get_env_variable
 import httpx
 import asyncio
 
+from io import StringIO
+import pandas as pd
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 class DataCollector():
     def __init__(self, api_key=None, database_url=None):
         if api_key == None:
@@ -18,10 +24,23 @@ class DataCollector():
         self.api_key = api_key
         self.database_url = database_url
 
+        self.engine = create_engine(database_url)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
+
     """
-    Returns data for tickers over a specified timerange contained in the database in a JSON format
+    Display loaded tickers along with the available time ranges for which they have been inspected
+
+    Returns
+    -------
+
+    domain: []Object {
+        ticker: str,
+        startDate: Datetime,
+        endDate: Datetime
+    }
     """
-    def read_data(tickers, between, increment="daily"):
+    def available_data(self):
         pass
 
 
@@ -31,9 +50,43 @@ class DataCollector():
     Parameters
     ----------
 
-    tickers: []str
+    tickers: []String
         A list of tickers to collect
+
+    interval: Enum("daily", "hourly")
+        The interval between data collection
+
+    start_date: Datetime
+        The date to begin data collection
+
+    end_date: Datetime
+        The date to end data collection
+
+    Returns
+    -------
+
+    data: []Object {
+        datetime: Datetime,
+        open: Float,
+        close: Float,
+        ...
+    }
+
     """
-    def collect_data(tickers, between, increment="daily"):
+    def collect_data(self, tickers, start_date, end_date, interval="daily", debug=True):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Token {self.api_key}'
+        }
+
         for ticker in tickers:
-            httpx.get(f"https://api.tiingo.com/tiingo/{increment}/{ticker}/prices?startDate={between[0]}&endDate={between[1]}&format=csv&resampleFreq=monthly")
+            response = httpx.get(f"https://api.tiingo.com/tiingo/{interval}/{ticker}/prices?startDate={start_date}&endDate={end_date}&format=csv", headers=headers)
+            if response.is_error:
+                if debug:
+                    print(f'Failed to retrieve data for {ticker} with the following response: "{response.text}".')
+
+                continue
+            df = pd.read_csv(StringIO(response.text), sep=",")
+            #reformat stuff
+            df.to_sql("stock_data", self.engine, if_exists='append')
+            # assert not dataframe.empty, 

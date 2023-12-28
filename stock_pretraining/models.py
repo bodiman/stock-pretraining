@@ -1,13 +1,17 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, Enum
 from sqlalchemy.ext.declarative import declarative_base
+
+from sqlalchemy.dialects.postgresql import UUID as pgUUID
+import uuid
 
 Base = declarative_base()
 
 class StockData(Base):
     __tablename__ = 'stock_data'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
+    stock_interval = Column(Enum('hourly', 'daily', name='interval'))
     stock_datetime = Column(Date)
     stock_volume = Column(Integer)
     stock_adj_open = Column(Integer)
@@ -18,7 +22,8 @@ class StockData(Base):
 class StockDomains(Base):
     __tablename__ = 'stock_domains'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
+    interval = Column(Enum('hourly', 'daily', name='interval'))
     start_datetime = Column(Date)
     end_datetime = Column(Date)
