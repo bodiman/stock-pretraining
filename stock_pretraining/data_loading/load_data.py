@@ -10,6 +10,8 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import uuid
+
 class DataCollector():
     def __init__(self, api_key=None, database_url=None):
         if api_key == None:
@@ -87,6 +89,19 @@ class DataCollector():
 
                 continue
             df = pd.read_csv(StringIO(response.text), sep=",")
+            df = df.rename(columns={
+                'date': 'stock_datetime',
+                'adjVolume': 'stock_adj_volume',
+                'adjClose': 'stock_adj_close',
+                'adjHigh': 'stock_adj_high',
+                'adjLow': 'stock_adj_low',
+                'adjOpen': 'stock_adj_open',
+            })
+            df['ticker'] = ticker
+            df['stock_interval'] = interval
+            df['id'] = [uuid.uuid4() for _ in range(len(df))]
+            df = df[['id', 'ticker', 'stock_interval', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
+            print(df)
             #reformat stuff
-            df.to_sql("stock_data", self.engine, if_exists='append')
+            df.to_sql("stock_data", self.engine, if_exists='append', index=False)
             # assert not dataframe.empty, 
