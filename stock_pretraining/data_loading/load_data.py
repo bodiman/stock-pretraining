@@ -101,7 +101,6 @@ class DataCollector():
             df['stock_interval'] = interval
             df['id'] = [uuid.uuid4() for _ in range(len(df))]
             df = df[['id', 'ticker', 'stock_interval', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
-            print(df)
             #reformat stuff
             df.to_sql("stock_data", self.engine, if_exists='append', index=False)
             # assert not dataframe.empty, 
