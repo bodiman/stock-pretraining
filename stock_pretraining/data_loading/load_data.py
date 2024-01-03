@@ -7,8 +7,10 @@ import asyncio
 from io import StringIO
 import pandas as pd
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, exists
 from sqlalchemy.orm import sessionmaker
+
+from models import StockData, StockDomains
 
 import uuid
 
@@ -31,6 +33,17 @@ class DataCollector():
         self.session = Session()
 
     """
+    Display tickers loadable from the Tiingo API
+
+    Returns
+    -------
+
+    loadable_tickers: []String
+    """
+    def available_tickers(self):
+        pass
+
+    """
     Display loaded tickers along with the available time ranges for which they have been inspected
 
     Returns
@@ -47,7 +60,8 @@ class DataCollector():
 
 
     """
-    Returns indicators for tickers between a specified timerange. Retrieves data not already contained in the database.
+    Returns indicators for tickers between a specified timerange. 
+    Writes data to database under the assumption the data has not already been collected.
 
     Parameters
     ----------
@@ -64,24 +78,33 @@ class DataCollector():
     end_date: Datetime
         The date to end data collection
 
+    overwrite_existing: Boolean
+        Overwrite existing rows in the database. Must be set to true if specified start_date and end_date 
+        overlap with existing data. Otherwise, use function collect_data
+
+    debug: Boolean
+        Log response errors from Tiingo API
+
     Returns
     -------
 
-    data: []Object {
-        datetime: Datetime,
-        open: Float,
-        close: Float,
-        ...
-    }
+    data: pd.Dataframe
 
     """
-    def collect_data(self, tickers, start_date, end_date, interval="daily", debug=True):
+    def set_data(self, tickers, start_date, end_date, interval="daily", overwrite_existing=False, debug=True):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Token {self.api_key}'
         }
 
         for ticker in tickers:
+            existing_rows = self.session.query(StockData).filter(StockDomains.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime <= end_date).all()
+            #check if there is any overlapping data. If there is, check that overwrite_existing is true. Otherwise delete the overlapping rows and proceed
+            assert len(existing_rows) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
+
+            if overwrite_existing:
+                existing_rows.delete()
+
             response = httpx.get(f"https://api.tiingo.com/tiingo/{interval}/{ticker}/prices?startDate={start_date}&endDate={end_date}&format=csv", headers=headers)
             if response.is_error:
                 if debug:
@@ -101,6 +124,8 @@ class DataCollector():
             df['stock_interval'] = interval
             df['id'] = [uuid.uuid4() for _ in range(len(df))]
             df = df[['id', 'ticker', 'stock_interval', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
-            #reformat stuff
             df.to_sql("stock_data", self.engine, if_exists='append', index=False)
-            # assert not dataframe.empty, 
+
+
+    def collect_data(self, tickers, start_data, end_data, interval="daily", debug=True):
+        pass
