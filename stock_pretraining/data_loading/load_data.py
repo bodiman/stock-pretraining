@@ -10,7 +10,7 @@ import pandas as pd
 from sqlalchemy import create_engine, exists
 from sqlalchemy.orm import sessionmaker
 
-from models import StockData, StockDomains
+from ..models import StockData, StockDomains
 
 import uuid
 
@@ -98,7 +98,7 @@ class DataCollector():
         }
 
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockDomains.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime <= end_date).all()
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date).all()
             #check if there is any overlapping data. If there is, check that overwrite_existing is true. Otherwise delete the overlapping rows and proceed
             assert len(existing_rows) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
