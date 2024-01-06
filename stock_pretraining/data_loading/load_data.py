@@ -7,10 +7,10 @@ import asyncio
 from io import StringIO
 import pandas as pd
 
-from sqlalchemy import create_engine, exists
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import StockData, StockDomains
+from ..models import StockData #, StockDomains
 
 import uuid
 
