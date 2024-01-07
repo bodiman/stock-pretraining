@@ -10,7 +10,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import StockData #, StockDomains
+from ..models import StockData, StockDomains
 
 import uuid
 
@@ -99,11 +99,22 @@ class DataCollector():
 
         for ticker in tickers:
             existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date).all()
-            #check if there is any overlapping data. If there is, check that overwrite_existing is true. Otherwise delete the overlapping rows and proceed
+            existing_domain = self.session.query(StockDomains).filter(StockData.ticker == ticker, StockData.stock_interval == interval).all()
+            existing_gaps = existing_domain.data_gaps
+
             assert len(existing_rows) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
             if overwrite_existing:
                 existing_rows.delete()
+
+            #update stock domains
+            """
+                1. Remove gaps fully contained between start and stop
+                2. Add gap if specified start and end contain gaps
+                3. Update any gap that is impacted by the addition
+                4. Update domain if impacted by the addition
+            """
+            
 
             response = httpx.get(f"https://api.tiingo.com/tiingo/{interval}/{ticker}/prices?startDate={start_date}&endDate={end_date}&format=csv", headers=headers)
             if response.is_error:
