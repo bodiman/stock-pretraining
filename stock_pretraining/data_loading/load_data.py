@@ -109,6 +109,7 @@ class DataCollector():
 
             #update stock domains
             """
+                1. Use gaps to create starts and stops 
                 1. Remove gaps fully contained between start and stop
                 2. Add gap if specified start and end contain gaps
                 3. Update any gap that is impacted by the addition
