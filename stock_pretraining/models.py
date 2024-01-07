@@ -37,6 +37,21 @@ class StockDomains(Base):
     __table_args__ = (UniqueConstraint(ticker, stock_interval),)
 
     @validates("sparsity_mapping")
+    def validate_sparsity_mapping(self, mapping):
+        #make sure every openned domain is closed
+        #make sure that dates are in ascending order from left to right
+        
+        """
+        1. Remove first character
+        2. Track a running date
+        3. split strings into stretches by `\`
+            4. for each domain stretch, split it into 2 by '|'
+                5. check that there are exactly 2 elements in the list
+                6. check that the value is greater than the running date, then update the running date `\`
+        """
+
+        return mapping
+
 
 # class DataGaps(Base):
 #     __tablename__ = 'data_gaps'
