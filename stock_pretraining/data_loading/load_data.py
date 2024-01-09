@@ -98,11 +98,11 @@ class DataCollector():
         }
 
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date).all()
-            existing_domain = self.session.query(StockDomains).filter(StockData.ticker == ticker, StockData.stock_interval == interval).all()
-            existing_gaps = existing_domain.data_gaps
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.stock_interval == interval, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
+            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.stock_interval == interval).first()
+            print(existing_domain)
 
-            assert len(existing_rows) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
+            assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
             if overwrite_existing:
                 existing_rows.delete()
