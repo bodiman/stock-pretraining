@@ -24,19 +24,23 @@ new_domains: string ??? Note: May be better to do this in a separate function un
 
 """
 def update_domain(sparsity_mapping, start, stop):
-    sparsity_mapping_array = sparsity_mapping.split("/")
+    sparsity_mapping_array = sparsity_mapping[1:].split("/")
+    new_sparsity_mapping_array = []
+    
 
-    for interval in sparsity_mapping_array[:]:
+    for interval in [interval_string.split("|") for interval_string in sparsity_mapping_array]:
         if intervals_intersect(interval, [start, stop]):
             start = min(start, interval[0])
             stop = max(stop, interval[1])
 
-            sparsity_mapping_array.remove(interval)
+            continue
+        
+        new_sparsity_mapping_array.append(interval)
     
-    sparsity_mapping_array.push([start, stop])
-    sparsity_mapping_array = sorted(sparsity_mapping_array, key=lambda x: x[0])
+    new_sparsity_mapping_array.append([start, stop])
+    new_sparsity_mapping_array = sorted(new_sparsity_mapping_array, key=lambda x: x[0])
 
-    return "".join([f'/{interval[0]}|{interval[1]}' for interval in sparsity_mapping_array])
+    return "".join([f'/{interval[0]}|{interval[1]}' for interval in new_sparsity_mapping_array])
 
     """
     1. Collect ordered list of partial domains.
