@@ -7,7 +7,7 @@ from sqlalchemy.orm import validates
 
 import uuid
 
-from datetime import datetime
+from dateutil.parser import parse
 
 Base = declarative_base()
 
@@ -16,7 +16,7 @@ class StockData(Base):
 
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
-    stock_interval = Column(Enum("daily", "hourly", name="interval_options"))
+    stock_interval = Column(Enum("daily", "monthly", "annually", name="interval_options"))
     stock_datetime = Column(Date)
     stock_adj_volume = Column(Float)
     stock_adj_open = Column(Float)
@@ -48,8 +48,8 @@ class StockDomains(Base):
                 continuous_interval = continuous_interval_string.split("|")
                 assert len(continuous_interval) == 2
 
-                start_date = datetime.strptime(continuous_interval[0])
-                stop_date = datetime.strptime(continuous_interval[1])
+                start_date = parse(continuous_interval[0])
+                stop_date = parse(continuous_interval[1])
 
                 assert running_date == None or start_date > running_date
                 assert stop_date > start_date
@@ -58,7 +58,7 @@ class StockDomains(Base):
 
 
         except Exception:
-            raise ValueError(f"Improperly formatted sparsity mapping string {mapstr}")
+            raise ValueError(f"Improperly formatted sparsity mapping string /{mapstr}")
 
         """
         1. Remove first character
@@ -69,4 +69,4 @@ class StockDomains(Base):
                 6. check that the value is greater than the running date, then update the running date `/`
         """
 
-        return mapstr
+        return "/" + mapstr
