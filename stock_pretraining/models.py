@@ -16,7 +16,7 @@ class StockData(Base):
 
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
-    stock_interval = Column(Enum("daily", "monthly", "annually", name="interval_options"))
+    resample_freq = Column(Enum("daily", "monthly", "annually", name="resample_options"))
     stock_datetime = Column(Date)
     stock_adj_volume = Column(Float)
     stock_adj_open = Column(Float)
@@ -29,11 +29,11 @@ class StockDomains(Base):
 
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
-    stock_interval = Column(String)
+    resample_freq = Column(String)
     start_datetime = Column(Date)
     end_datetime = Column(Date)
     sparsity_mapping = Column(String)
-    __table_args__ = (UniqueConstraint(ticker, stock_interval),)
+    __table_args__ = (UniqueConstraint(ticker, resample_freq),)
 
     @validates("sparsity_mapping")
     def validate_sparsity_mapping(self, key, mapstr):

@@ -69,8 +69,8 @@ class DataCollector():
     tickers: []String
         A list of tickers to collect
 
-    freq: Enum("daily", "monthly", "annually")
-        The interval between data collection
+    resample_freq: Enum("daily", "monthly", "annually")
+        The interval between data collection instances
 
     start_date: Datetime
         The date to begin data collection
@@ -91,15 +91,15 @@ class DataCollector():
     data: pd.Dataframe
 
     """
-    def set_data(self, tickers, start_date, end_date, freq="daily", overwrite_existing=False, debug=True):
+    def set_data(self, tickers, start_date, end_date, resample_freq="daily", overwrite_existing=False, debug=True):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Token {self.api_key}'
         }
 
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.stock_interval == freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
-            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.stock_interval == freq).first()
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
+            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
             # print(existing_domain)
 
             assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
@@ -117,7 +117,7 @@ class DataCollector():
             """
             
 
-            response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={freq}&format=csv", headers=headers)
+            response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
             if response.is_error:
                 if debug:
                     print(f'Failed to retrieve data for {ticker} with the following response: "{response.text}".')
@@ -133,11 +133,11 @@ class DataCollector():
                 'adjOpen': 'stock_adj_open',
             })
             df['ticker'] = ticker
-            df['stock_interval'] = freq
+            df['resample_freq'] = resample_freq
             df['id'] = [uuid.uuid4() for _ in range(len(df))]
-            df = df[['id', 'ticker', 'stock_interval', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
+            df = df[['id', 'ticker', 'resample_freq', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
             df.to_sql("stock_data", self.engine, if_exists='append', index=False)
 
 
-    def collect_data(self, tickers, start_data, end_data, interval="daily", debug=True):
+    def collect_data(self, tickers, start_data, end_data, resample_freq="daily", debug=True):
         pass
