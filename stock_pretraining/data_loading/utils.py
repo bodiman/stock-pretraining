@@ -1,5 +1,5 @@
 """
-Updates the sparsity mapping string of a stock domain based on a new 
+Updates the sparsity mapping string of a stock domain by adding a new time interval
 
 Parameters
 ----------
@@ -49,18 +49,28 @@ def update_domain(sparsity_mapping, start, stop):
         4. If there is an intersection, absorb the domain into the start and stop and remove it from the list
 
     5. Sort the list by starting date and combine into sparsity mapping string
-
-    Intersection
-
-    No Intersection
-
-    s1e1 s2e2
-    s2e2 s1e1
-
     """
 
 
 """
+Determines weather two continuous intervals intersect
+
+
+Parameters
+----------
+
+interval1: string
+    A continuous interval in sparsity mapping string notation
+
+interval2: string
+    A continuous interval in sparsity mapping string notation
+
+Returns
+-------
+
+intersects: bool
+    Weather the intervals intersect
+
 Note
 ----
 
@@ -71,4 +81,68 @@ def intervals_intersect(interval1, interval2):
     s2, e2 = interval2
 
     return not (e1 < s2 or s1 > e2)
+
+
+"""
+Calculates the relative complement of two sparsity mapping strings
+
+Parameters
+----------
+
+sparsity_mapping_1: string
+    Base sparsity mapping string
+
+sparsity_mapping_2: string
+    Sparsity mapping string to be subtracted
+
+Returns
+-------
+"""
+def subtract_domain(sparsity_mapping_1, sparisty_mapping_2):
+    """
+    1. Loop through the continuous intervals in sparsity mapping 1
+        2. Loop through the continuous intervals in sparsity mapping 2
+            3. subtract each continuous domain 2 from continuous domain 1, append continuous domain 1 to a list
+    
+    4. combine list of new, not necessarily continuous domains into a sparsity mapping string
+    """
+
+
+"""
+A helper function of subtract_domain. 
+Applies to single continuous intervals rather than complete, possibly sparse domains.
+
+
+Parameters
+----------
+
+interval1: string
+    Base continuous interval in sparsity mapping string notation
+
+interval2: string
+    Continuous interval to be subtracted in sparsity mapping string notation
+
+    
+Returns
+-------
+
+
+
+"""
+def subtract_continuous_intervals(interval1, interval2):
+    ...
+    """
+    Here are the cases:
+
+    1. interval 1 and interval 2 do not intersect:
+        return interval 1
+
+    2. Interval 1 and interval 2 overlap, but interval 2 is not a proper subset of interval 1:
+        Check which end of interval 1 lies within interval 2 and update that end
+
+    3. Interval 2 is a proper subset of interval 1
+        Produce two new intervals, (interval1[0], interval2[0]) and (interval2[1], interval1[1])
+    """
+
+
 
