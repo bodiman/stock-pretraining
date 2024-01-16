@@ -53,37 +53,6 @@ def update_domain(sparsity_mapping, start, stop):
 
 
 """
-Determines weather two continuous intervals intersect
-
-
-Parameters
-----------
-
-interval1: string
-    A continuous interval in sparsity mapping string notation
-
-interval2: string
-    A continuous interval in sparsity mapping string notation
-
-Returns
--------
-
-intersects: bool
-    Weather the intervals intersect
-
-Note
-----
-
-This function operates on strings
-"""
-def intervals_intersect(interval1, interval2):
-    s1, e1 = interval1
-    s2, e2 = interval2
-
-    return not (e1 < s2 or s1 > e2)
-
-
-"""
 Calculates the relative complement of two sparsity mapping strings
 
 Parameters
@@ -130,19 +99,55 @@ Returns
 
 """
 def subtract_continuous_intervals(interval1, interval2):
-    ...
+    if not intervals_intersect(interval1, interval2):
+        return  interval1
+    
+    interval1 = interval1.split("|")
+    interval2 = interval2.split("|")
+
+    if interval1[0] < interval2[0] and interval2[1] < interval1[0]:
+        return f"{interval1[0]}|{interval2[0]}/{interval2[1]}|{interval1[1]}"
+    
+    if interval1[0] > interval2[0]:
+        return f"{interval2[1]}|{interval1[1]}"
+    
+    return f"{interval1[0]}|{interval2[0]}"
+
     """
     Here are the cases:
 
     1. interval 1 and interval 2 do not intersect:
         return interval 1
 
-    2. Interval 1 and interval 2 overlap, but interval 2 is not a proper subset of interval 1:
-        Check which end of interval 1 lies within interval 2 and update that end
-
-    3. Interval 2 is a proper subset of interval 1
+    2. Interval 2 is a proper subset of interval 1
         Produce two new intervals, (interval1[0], interval2[0]) and (interval2[1], interval1[1])
+
+    3. Interval 1 and interval 2 overlap, but interval 2 is not a proper subset of interval 1:
+        Check which end of interval 1 lies within interval 2 and update that end
     """
 
 
 
+"""
+Determines weather two continuous intervals intersect
+
+Parameters
+----------
+
+interval1: string
+    A continuous interval in sparsity mapping string notation
+
+interval2: string
+    A continuous interval in sparsity mapping string notation
+
+Returns
+-------
+
+intersects: bool
+    Weather the intervals intersect
+"""
+def intervals_intersect(interval1, interval2):
+    s1, e1 = interval1
+    s2, e2 = interval2
+
+    return not (e1 < s2 or s1 > e2)
