@@ -108,7 +108,7 @@ class DataCollector():
             if overwrite_existing:
                 existing_rows.delete()
 
-            new_domain = update_domain(existing_domain or "/", start_date, end_date)          
+            new_domain = update_domain(existing_domain.sparsity_mapping or "/", start_date, end_date)          
 
             response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
             if response.is_error:
