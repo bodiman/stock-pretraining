@@ -30,8 +30,6 @@ class StockDomains(Base):
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
     resample_freq = Column(String)
-    start_datetime = Column(Date)
-    end_datetime = Column(Date)
     sparsity_mapping = Column(String)
     __table_args__ = (UniqueConstraint(ticker, resample_freq),)
 

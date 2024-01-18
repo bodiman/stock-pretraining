@@ -25,10 +25,11 @@ new_domains: string ??? Note: May be better to do this in a separate function un
 """
 def update_domain(sparsity_mapping, start, stop):
     sparsity_mapping_array = sparsity_mapping[1:].split("/")
+    sparsity_mapping_array.remove("")
     new_sparsity_mapping_array = []
-    
 
     for interval in [interval_string.split("|") for interval_string in sparsity_mapping_array]:
+        print(interval)
         if intervals_intersect(interval, [start, stop]):
             start = min(start, interval[0])
             stop = max(stop, interval[1])

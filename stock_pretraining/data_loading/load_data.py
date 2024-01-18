@@ -2,7 +2,7 @@ from ..environment import get_env_variable
 
 #request libraries
 import httpx
-import asyncio
+# import asyncio
 
 from io import StringIO
 import pandas as pd
@@ -13,6 +13,8 @@ from sqlalchemy.orm import sessionmaker
 from ..models import StockData, StockDomains
 
 import uuid
+
+from .utils import update_domain, subtract_domain
 
 class DataCollector():
     def __init__(self, api_key=None, database_url=None):
@@ -100,22 +102,13 @@ class DataCollector():
         for ticker in tickers:
             existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
             existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
-            # print(existing_domain)
 
             assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
             if overwrite_existing:
                 existing_rows.delete()
 
-            #update stock domains
-            """
-                1. Use gaps to create starts and stops 
-                1. Remove gaps fully contained between start and stop
-                2. Add gap if specified start and end contain gaps
-                3. Update any gap that is impacted by the addition
-                4. Update domain if impacted by the addition
-            """
-            
+            new_domain = update_domain(existing_domain or "/", start_date, end_date)          
 
             response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
             if response.is_error:
@@ -137,6 +130,21 @@ class DataCollector():
             df['id'] = [uuid.uuid4() for _ in range(len(df))]
             df = df[['id', 'ticker', 'resample_freq', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
             df.to_sql("stock_data", self.engine, if_exists='append', index=False)
+
+            if existing_domain:
+                existing_domain.sparsity_mapping = new_domain
+                self.session.commit()
+                continue
+
+            domain = pd.DataFrame({
+                'ticker': ticker,
+                'resample_freq': resample_freq,
+                'sparsity_mapping': new_domain
+            }, index=[0])
+
+            domain['id'] = [uuid.uuid4() for _ in range(len(domain))]
+            domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
+
 
 
     def collect_data(self, tickers, start_data, end_data, resample_freq="daily", debug=True):
