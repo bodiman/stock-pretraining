@@ -67,7 +67,23 @@ sparsity_mapping_2: string
 Returns
 -------
 """
-def subtract_domain(sparsity_mapping_1, sparisty_mapping_2):
+def subtract_domain(sparsity_mapping_1, sparsity_mapping_2):
+    all_domains = []
+
+    sparsity_mapping_1 = sparsity_mapping_1[1:].split("/")
+    sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
+
+    for continuous_interval in sparsity_mapping_1:
+        interval_copy = str(continuous_interval)
+
+        for subtract_interval in sparsity_mapping_2:
+            interval_copy = subtract_continuous_intervals(interval_copy, subtract_interval)
+
+        all_domains.append(interval_copy)
+    all_domains = [i for i in all_domains if i != ""]
+    
+    return "/" + "/".join(all_domains)
+
     """
     1. Loop through the continuous intervals in sparsity mapping 1
         2. Loop through the continuous intervals in sparsity mapping 2
@@ -95,20 +111,24 @@ interval2: string
 Returns
 -------
 
-
+updated_interval: string
+    A new interval in sparsity mapping string format
 
 """
 def subtract_continuous_intervals(interval1, interval2):
-    if not intervals_intersect(interval1, interval2):
-        return  interval1
-    
     interval1 = interval1.split("|")
     interval2 = interval2.split("|")
 
-    if interval1[0] < interval2[0] and interval2[1] < interval1[0]:
+    if not intervals_intersect(interval1, interval2):
+        return  f"{interval1[0]}|{interval1[1]}"
+    
+    if interval2[0] <= interval1[0] and interval1[1] <= interval2[1]:
+        return ""
+
+    if interval1[0] <= interval2[0] and interval2[1] <= interval1[1]:
         return f"{interval1[0]}|{interval2[0]}/{interval2[1]}|{interval1[1]}"
     
-    if interval1[0] > interval2[0]:
+    if interval1[0] >= interval2[0]:
         return f"{interval2[1]}|{interval1[1]}"
     
     return f"{interval1[0]}|{interval2[0]}"
@@ -119,10 +139,13 @@ def subtract_continuous_intervals(interval1, interval2):
     1. interval 1 and interval 2 do not intersect:
         return interval 1
 
-    2. Interval 2 is a proper subset of interval 1
+    2. Interval 1 is a subset of interval 2
+        Return ""
+
+    3. Interval 2 is a subset of interval 1
         Produce two new intervals, (interval1[0], interval2[0]) and (interval2[1], interval1[1])
 
-    3. Interval 1 and interval 2 overlap, but interval 2 is not a proper subset of interval 1:
+    4. Interval 1 and interval 2 overlap, but neither properly contains the other:
         Check which end of interval 1 lies within interval 2 and update that end
     """
 
@@ -134,11 +157,11 @@ Determines weather two continuous intervals intersect
 Parameters
 ----------
 
-interval1: string
-    A continuous interval in sparsity mapping string notation
+interval1: tuple(string, string)
+    A continuous interval in YYYY-MM-DD format
 
-interval2: string
-    A continuous interval in sparsity mapping string notation
+interval2: tuple(string, string)
+    A continuous interval in YYYY-MM-DD format
 
 Returns
 -------
