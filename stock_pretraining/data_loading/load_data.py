@@ -62,7 +62,7 @@ class DataCollector():
 
 
     """
-    Returns indicators for tickers between a specified timerange. 
+    Collects indicators for tickers between a specified timerange. 
     Writes data to database under the assumption the data has not already been collected.
 
     Parameters
@@ -74,11 +74,11 @@ class DataCollector():
     resample_freq: Enum("daily", "monthly", "annually")
         The interval between data collection instances
 
-    start_date: Datetime
-        The date to begin data collection
+    start_date: string
+        The date to begin data collection in the format YYYY-MM-DD
 
-    end_date: Datetime
-        The date to end data collection
+    end_date: string
+        The date to end data collection in the format YYYY-MM-DD
 
     overwrite_existing: Boolean
         Overwrite existing rows in the database. Must be set to true if specified start_date and end_date 
@@ -90,7 +90,7 @@ class DataCollector():
     Returns
     -------
 
-    data: pd.Dataframe
+    None
 
     """
     def set_data(self, tickers, start_date, end_date, resample_freq="daily", overwrite_existing=False, debug=True):
@@ -108,7 +108,10 @@ class DataCollector():
             if overwrite_existing:
                 existing_rows.delete()
 
-            new_domain = update_domain(existing_domain.sparsity_mapping or "/", start_date, end_date)          
+            if existing_domain:
+                new_domain = update_domain(existing_domain.sparsity_mapping, start_date, end_date)  
+            else:
+                new_domain = update_domain("/", start_date, end_date) 
 
             response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
             if response.is_error:
@@ -146,6 +149,96 @@ class DataCollector():
             domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
 
 
+    """
+    Collects indicators for tickers between a specified timerange, avoiding redundency created by previous calls. 
+    Writes data to database. Will not affect data under existing domain.
 
-    def collect_data(self, tickers, start_data, end_data, resample_freq="daily", debug=True):
-        pass
+    Parameters
+    ----------
+
+    tickers: []String
+        A list of tickers to collect
+
+    resample_freq: Enum("daily", "monthly", "annually")
+        The interval between data collection instances
+
+    start_date: string
+        The date to begin data collection in the format YYYY-MM-DD
+
+    end_date: string
+        The date to end data collection in the format YYYY-MM-DD
+
+    debug: Boolean
+        Log response errors from Tiingo API
+
+
+    Returns
+    -------
+    
+    None
+
+    """
+    def collect_data(self, tickers, start_date, end_date, resample_freq="daily", debug=True):
+        total_domain = update_domain("/", start_date, end_date) 
+
+        for ticker in tickers:
+            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+            
+            if existing_domain:
+                existing_domain = existing_domain.sparsity_mapping
+            else:
+                existing_domain = "/"
+            
+            domain_to_update = subtract_domain(total_domain, existing_domain)
+
+            for interval in domain_to_update[1:].split("/"):
+                start, end = interval.split("|")
+                self.set_data([ticker], start, end, resample_freq=resample_freq, debug=debug)
+
+
+        """
+        1. Get current domain
+        2. Get new domain
+        3. Take new domain - current domain to get the sparsity mapping of the times you need to update
+        4. For each interval in the new domain, call set_data over the interval
+        """
+    
+    """
+    Delete data from the database.
+
+
+    Parameters
+    ----------
+    tickers: []String
+        A list of tickers to delete
+
+    resample_freq: Enum("daily", "monthly", "annually")
+        The resample frequency for the data being deleted
+
+    start_date: string
+        The date to begin data deletion in the format YYYY-MM-DD
+
+    end_date: string
+        The date to end data deletion in the format YYYY-MM-DD
+
+    """
+    def delete_data(self, tickers, start_date, end_date, resample_freq):
+        for ticker in tickers:
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
+            existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+
+            existing_rows.delete()
+
+            if existing_md:
+                existing_domain = existing_md.sparsity_mapping
+            else:
+                existing_domain = "/"
+
+            deletion_domain = update_domain("/", start_date, end_date)
+
+            new_domain = subtract_domain(existing_domain, deletion_domain)
+
+            existing_md.sparsity_mapping = new_domain
+
+            self.session.commit()
+            

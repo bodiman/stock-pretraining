@@ -73,6 +73,9 @@ def subtract_domain(sparsity_mapping_1, sparsity_mapping_2):
     sparsity_mapping_1 = sparsity_mapping_1[1:].split("/")
     sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
 
+    sparsity_mapping_1 = [i for i in sparsity_mapping_1 if i != ""]
+    sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
+
     for continuous_interval in sparsity_mapping_1:
         interval_copy = str(continuous_interval)
 
