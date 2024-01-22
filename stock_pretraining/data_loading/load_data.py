@@ -17,20 +17,23 @@ import uuid
 from .utils import update_domain, subtract_domain
 
 class DataCollector():
-    def __init__(self, api_key=None, database_url=None):
-        if api_key == None:
-            api_key = get_env_variable("TIINGO_API_KEY")
+    def __init__(self, config=None):
+        if not config:
+            config = {}
 
-        if database_url == None:
-            database_url = get_env_variable("database_url")
-        
-        assert api_key is not None, "You must either specify an API key or include a TIINGO_API_KEY as an environment variable."
-        assert database_url is not None, "You must either specify a database url or include a database_url as an environment variable."
-        
-        self.api_key = api_key
-        self.database_url = database_url
+        if not "api_key" in config.keys():
+            config['api_key'] = get_env_variable("TIINGO_API_KEY")
 
-        self.engine = create_engine(database_url)
+        if not "database_url" in config.keys():
+            config['database_url'] = get_env_variable("database_url")
+        
+        assert "api_key" in config.keys(), "You must either specify an api_key in your configuration or include a TIINGO_API_KEY as an environment variable."
+        assert "database_url" in config.keys(), "You must either specify a database_url in your configuration or include a database_url as an environment variable."
+        
+        self.api_key = config['api_key']
+        self.database_url = config['database_url']
+
+        self.engine = create_engine(self.database_url)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
@@ -190,8 +193,10 @@ class DataCollector():
                 existing_domain = "/"
             
             domain_to_update = subtract_domain(total_domain, existing_domain)
+            domain_to_update = domain_to_update[1:].split("/")
+            domain_to_update = [i for i in domain_to_update if i != ""]
 
-            for interval in domain_to_update[1:].split("/"):
+            for interval in domain_to_update:
                 start, end = interval.split("|")
                 self.set_data([ticker], start, end, resample_freq=resample_freq, debug=debug)
 
