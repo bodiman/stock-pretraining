@@ -11,7 +11,7 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 # # Requirements
 
 ```
-python: 3.11.6
+python=3.11.6
 ```
 
 # # Getting Started
@@ -21,6 +21,7 @@ If you do not have a Tiingo account, create one at https://www.tiingo.com
 
 ```
 #.env
+
 TIINGO_API_KEY=
 database_url=database://user:password@host:port/stock_program_database
 
@@ -58,8 +59,8 @@ data_collector.delete_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq="d
 
 # # Sparsity Mapping Strings
 
-Each Stock Domain datapoint comes with a sparsity mapping string, which tracks gaps in collected data. The string 
+Each Stock Domain datapoint comes with a sparsity mapping string, which tracks gaps in collected data. In a sparsity mapping string, a forward slash indicates the start of a domain and a pipe marks the end of the domain, and dates are written in YYYY-MM-DD format. For instance, the string 
 
 ```"/2022-01-01|2022-12-31/2023-02-01-01|2023-12-31"```
 
-for instance, would indicate a time domain that starts January 1, 2022 and ends December 31, 2023 with a gap spanning the month of January for 2023. A backward slash indicates the start of a domain and a pipe marks the end of the domain. In order for a string to be a valid sparsity mapping string, the dates must read from left to right in chronological order.
+ would indicate a time domain that starts January 1, 2022 and ends December 31, 2023 with a gap spanning the month of January for 2023. In order for a string to be a valid sparsity mapping string, the dates must read from left to right in chronological order.
