@@ -10,9 +10,14 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 
 # # Requirements
 
-# # Environmental Variables
-In your .env file, provide your Tiingo API key and the database url.
-If you do not have a Tiingo account, create one at https://???
+```
+python: 3.11.6
+```
+
+# # Getting Started
+
+In your .env file, provide your Tiingo API key and a database url.
+If you do not have a Tiingo account, create one at https://www.tiingo.com
 
 ```
 #.env
@@ -21,19 +26,35 @@ database_url=database://user:password@host:port/stock_program_database
 
 ```
 
-# # Getting Started
-
 To set up the database, run 
 
 ```python setup_database.py```
 
-To view a complete list of the stocks available via the Tiingo API, run
-```
-import data_collector
+This will create two tables in the database: stock_data and stock_domains.
 
+stock_data is used to track the End of Day values loaded into the database.
+stock_domains tracks the data intervals tracked by the database stored as a sparisty mapping string
+
+
+## Data Loading
+
+The DataCollector class is the object through which data should be inserted and deleted into the database. It tracks not only the data itself, but also the ranges of data that have been loaded into the database.
+
+To load data into your database, run the following:
+```
+from stock_pretraining.data_loading import DataCollector
+
+data_collector = DataCollector()
+data_collector.collect_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq="daily")
 ```
 
-To 
+This will populate the database with all EOD data for the SPY ETF between 2019 and 2021 available through the Tiingo API. It will not overwrite existing data.
+
+
+To delete data from the database, run
+```
+data_collector.delete_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq="daily")
+```
 
 # # Sparsity Mapping Strings
 

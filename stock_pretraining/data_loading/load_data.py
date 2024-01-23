@@ -37,32 +37,6 @@ class DataCollector():
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
-    """
-    Display tickers loadable from the Tiingo API
-
-    Returns
-    -------
-
-    loadable_tickers: []String
-    """
-    def available_tickers(self):
-        pass
-
-    """
-    Display loaded tickers along with the available time ranges for which they have been inspected
-
-    Returns
-    -------
-
-    domain: []Object {
-        ticker: str,
-        startDate: Datetime,
-        endDate: Datetime
-    }
-    """
-    def available_data(self):
-        pass
-
 
     """
     Collects indicators for tickers between a specified timerange. 
@@ -109,7 +83,7 @@ class DataCollector():
             assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
             if overwrite_existing:
-                existing_rows.delete()
+                self.delete_data([ticker], start_date, end_date, resample_freq='daily')
 
             if existing_domain:
                 new_domain = update_domain(existing_domain.sparsity_mapping, start_date, end_date)  
@@ -117,12 +91,16 @@ class DataCollector():
                 new_domain = update_domain("/", start_date, end_date) 
 
             response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
-            if response.is_error:
+            if response.is_error or "Error" in response.text:
                 if debug:
                     print(f'Failed to retrieve data for {ticker} with the following response: "{response.text}".')
 
                 continue
+            
+            print(response.text)
+
             df = pd.read_csv(StringIO(response.text), sep=",")
+
             df = df.rename(columns={
                 'date': 'stock_datetime',
                 'adjVolume': 'stock_adj_volume',
