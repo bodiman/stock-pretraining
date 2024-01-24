@@ -212,10 +212,13 @@ class DataCollector():
     end_date: string
         The date to end data deletion in the format YYYY-MM-DD
 
+    Notes:
+        start_date and end_date form an open interval. The dates themselves will not be subtracted.
+
     """
     def delete_data(self, tickers, start_date, end_date, resample_freq):
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date < StockData.stock_datetime, StockData.stock_datetime < end_date)
             existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
 
             existing_rows.delete()

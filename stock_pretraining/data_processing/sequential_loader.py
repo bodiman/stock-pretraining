@@ -34,7 +34,7 @@ class SequentialLoader():
 
 
     def get_rows(self, tickers, start_date, end_date, resample_freq="daily", outer_join=False):
-        rows = self.session.query(StockData).filter(StockData.ticker == tickers[0], StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
+        rows = self.session.query(StockData.stock_datetime).filter(StockData.ticker.in_(tickers), StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
         print(rows.all())
 
 

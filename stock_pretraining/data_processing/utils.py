@@ -66,38 +66,77 @@ sparsity_mapping_2: string
 
 Returns
 -------
+
+difference: string
+    Sparsity mapping string representing the difference between the two domains
+
+Notes
+-----
+
+All intervals are treated as open intervals. Dates forming the boundaries will not be subtracted.
+
 """
 def subtract_domain(sparsity_mapping_1, sparsity_mapping_2):
-    all_domains = []
+    sparsity_mapping_1 = sparsity_mapping_1[1:]
 
-    sparsity_mapping_1 = sparsity_mapping_1[1:].split("/")
     sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
-
-    sparsity_mapping_1 = [i for i in sparsity_mapping_1 if i != ""]
     sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
 
-    for continuous_interval in sparsity_mapping_1:
-        interval_copy = str(continuous_interval)
-
-        for subtract_interval in sparsity_mapping_2:
-            interval_copy = subtract_continuous_intervals(interval_copy, subtract_interval)
-
-        all_domains.append(interval_copy)
-    all_domains = [i for i in all_domains if i != ""]
+    for subtract_interval in sparsity_mapping_2:
+        sparsity_mapping_1 = subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval)
     
-    return "/" + "/".join(all_domains)
+    return "/" + sparsity_mapping_1
 
     """
-    1. Loop through the continuous intervals in sparsity mapping 1
-        2. Loop through the continuous intervals in sparsity mapping 2
-            3. subtract each continuous domain 2 from continuous domain 1, append continuous domain 1 to a list
-    
-    4. combine list of new, not necessarily continuous domains into a sparsity mapping string
+    1. Loop through continuous intervals in sparsity mapping 2
+        2. Subtract from sparsity mapping 1
+    3. Return sparsity mapping 1
     """
 
 
 """
-A helper function of subtract_domain. 
+A helper function for subtract_domain.
+Takes the difference between a domain and a continuous interval
+
+Parameters
+----------
+
+domain: string 
+    A sparsity mapping string
+
+subtraction_interval: string
+    An interval string of the form YYYY-MM-DD|YYYY-MM-DD
+
+Returns
+-------
+difference: string
+    Sparsity mapping string representing the difference between the domain and subtraction_interval
+
+"""
+def subtract_continuous_interval_from_domain(domain, subtraction_interval):
+    domain = domain.split("/")
+    domain = [i for i in domain if i != ""]
+
+    all_intervals = []
+
+    for continuous_interval in domain:
+        difference = subtract_continuous_intervals(continuous_interval, subtraction_interval)
+        all_intervals.append(difference)
+
+    all_intervals = [i for i in all_intervals if i != ""]
+    return "/".join(all_intervals)
+
+    """
+    1. Loop through domain
+    2. Get continous interval difference
+    3. append to list
+    4. combine everything back into string
+    """
+
+
+
+"""
+A helper function of subtract_continuous_interval_from_domain. 
 Applies to single continuous intervals rather than complete, possibly sparse domains.
 
 
@@ -116,6 +155,7 @@ Returns
 
 updated_interval: string
     A new interval in sparsity mapping string format
+
 
 """
 def subtract_continuous_intervals(interval1, interval2):
