@@ -20,9 +20,6 @@ class DataCollector():
     def __init__(self, config=None):
         config = self.set_config(config)
         
-        assert "api_key" in config.keys(), "You must either specify an api_key in your configuration or include a TIINGO_API_KEY as an environment variable."
-        assert "database_url" in config.keys(), "You must either specify a database_url in your configuration or include a database_url as an environment variable."
-        
         self.api_key = config['api_key']
         self.database_url = config['database_url']
 
@@ -43,6 +40,9 @@ class DataCollector():
 
         if not "database_url" in config.keys():
             config['database_url'] = get_env_variable("database_url")
+
+        assert "api_key" in config.keys(), "You must either specify an api_key in your configuration or include a TIINGO_API_KEY as an environment variable."
+        assert "database_url" in config.keys(), "You must either specify a database_url in your configuration or include a database_url as an environment variable."
         
         return config
 
@@ -106,8 +106,6 @@ class DataCollector():
                     print(f'Failed to retrieve data for {ticker} with the following response: "{response.text}".')
 
                 continue
-            
-            print(response.text)
 
             df = pd.read_csv(StringIO(response.text), sep=",")
 
