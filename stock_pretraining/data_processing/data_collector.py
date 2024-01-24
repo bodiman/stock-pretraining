@@ -18,14 +18,7 @@ from .utils import update_domain, subtract_domain
 
 class DataCollector():
     def __init__(self, config=None):
-        if not config:
-            config = {}
-
-        if not "api_key" in config.keys():
-            config['api_key'] = get_env_variable("TIINGO_API_KEY")
-
-        if not "database_url" in config.keys():
-            config['database_url'] = get_env_variable("database_url")
+        config = self.set_config(config)
         
         assert "api_key" in config.keys(), "You must either specify an api_key in your configuration or include a TIINGO_API_KEY as an environment variable."
         assert "database_url" in config.keys(), "You must either specify a database_url in your configuration or include a database_url as an environment variable."
@@ -36,6 +29,23 @@ class DataCollector():
         self.engine = create_engine(self.database_url)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
+
+    
+    """
+    Set configuration for DataCollector instance
+    """
+    def set_config(self, config):
+        if not config:
+            config = {}
+
+        if not "api_key" in config.keys():
+            config['api_key'] = get_env_variable("TIINGO_API_KEY")
+
+        if not "database_url" in config.keys():
+            config['database_url'] = get_env_variable("database_url")
+        
+        return config
+
 
 
     """
