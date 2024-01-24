@@ -212,9 +212,6 @@ class DataCollector():
     end_date: string
         The date to end data deletion in the format YYYY-MM-DD
 
-    Notes:
-        start_date and end_date form an open interval. The dates themselves will not be subtracted.
-
     """
     def delete_data(self, tickers, start_date, end_date, resample_freq):
         for ticker in tickers:
@@ -232,7 +229,11 @@ class DataCollector():
 
             new_domain = subtract_domain(existing_domain, deletion_domain)
 
-            existing_md.sparsity_mapping = new_domain
+            if new_domain == "/":
+                self.session.delete(existing_md)
+
+            else:
+                existing_md.sparsity_mapping = new_domain
 
             self.session.commit()
             

@@ -64,3 +64,5 @@ Each Stock Domain datapoint comes with a sparsity mapping string, which tracks g
 ```"/2022-01-01|2022-12-31/2023-02-01-01|2023-12-31"```
 
  would indicate a time domain that starts January 1, 2022 and ends December 31, 2023 with a gap spanning the month of January for 2023. In order for a string to be a valid sparsity mapping string, the dates must read from left to right in chronological order.
+
+ Note that in the current version, it is ambiguous weather the intervals given are open or closed. This stems from the fact the subtraction function subtracts a closed interval. This will be updated in future versions by removing boundary points from the domain.

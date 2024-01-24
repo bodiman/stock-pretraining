@@ -70,11 +70,6 @@ Returns
 difference: string
     Sparsity mapping string representing the difference between the two domains
 
-Notes
------
-
-All intervals are treated as open intervals. Dates forming the boundaries will not be subtracted.
-
 """
 def subtract_domain(sparsity_mapping_1, sparsity_mapping_2):
     sparsity_mapping_1 = sparsity_mapping_1[1:]
