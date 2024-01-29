@@ -268,4 +268,4 @@ def intervals_intersect(interval1, interval2):
     s1, e1 = interval1
     s2, e2 = interval2
 
-    return not (e1 < s2 or s1 > e2)
+    return not (e1 <= s2 or s1 >= e2)

@@ -177,9 +177,8 @@ class DataCollector():
                 existing_domain = existing_domain.sparsity_mapping
             else:
                 existing_domain = "/"
-            
+
             domain_to_update = subtract_domain(total_domain, existing_domain, resample_freq=resample_freq)
-            print("ran", domain_to_update)
             domain_to_update = domain_to_update[1:].split("/")
             domain_to_update = [i for i in domain_to_update if i != ""]
 
