@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, String, Date, Enum, UniqueConstraint
+from sqlalchemy import Column, Float, String, Date, Enum as SAEnum, UniqueConstraint
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID as pgUUID
@@ -9,6 +9,13 @@ import uuid
 
 from dateutil.parser import parse
 
+#Key names should match keywordargs for timedelta
+resample_options = {
+    "days": "daily",
+    "months": "monthly",
+    "years": "annually"
+}
+
 Base = declarative_base()
 
 class StockData(Base):
@@ -16,7 +23,7 @@ class StockData(Base):
 
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
-    resample_freq = Column(Enum("daily", "monthly", "annually", name="resample_options"))
+    resample_freq = Column(SAEnum(*[key for key in resample_options.values()], name="resample_options"))
     stock_datetime = Column(Date)
     stock_adj_volume = Column(Float)
     stock_adj_open = Column(Float)
@@ -49,8 +56,8 @@ class StockDomains(Base):
                 start_date = parse(continuous_interval[0])
                 stop_date = parse(continuous_interval[1])
 
-                assert running_date == None or start_date > running_date
-                assert stop_date > start_date
+                assert running_date == None or start_date >= running_date
+                assert stop_date >= start_date
                 
                 running_date = stop_date
 

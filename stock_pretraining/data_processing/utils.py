@@ -1,3 +1,44 @@
+from datetime import datetime, timedelta
+from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
+
+from ..models import resample_options
+
+"""
+Increments datetime by 1 unit
+
+Parameters
+----------
+
+datestr: str
+    A string that can be parsed as a datetime in the form YYYY-MM-DD H:M:S
+
+unit: resample_options.member
+    The unit
+
+Returns
+-------
+
+new_datestr: str
+    Incremented string
+
+"""
+
+def increment(datestr, unit, decrement = False):
+    parsed = parse(datestr)
+
+    kwargs = {}
+
+    for key, value in resample_options.items():
+        kwargs[key] = (unit == value) * (-1 if decrement else 1)
+
+    parsed = parsed + relativedelta(**kwargs)
+
+    if parsed.hour == 0 and parsed.minute == 0:
+        return str(parsed.date())
+
+    return str(parsed.date()) + str(parsed.time())
+
 """
 Updates the sparsity mapping string of a stock domain by adding a new time interval
 
@@ -64,6 +105,9 @@ sparsity_mapping_1: string
 sparsity_mapping_2: string
     Sparsity mapping string to be subtracted
 
+resample_freq: string
+    The resample frequency of the input intervals
+
 Returns
 -------
 
@@ -71,14 +115,14 @@ difference: string
     Sparsity mapping string representing the difference between the two domains
 
 """
-def subtract_domain(sparsity_mapping_1, sparsity_mapping_2):
+def subtract_domain(sparsity_mapping_1, sparsity_mapping_2, resample_freq="daily"):
     sparsity_mapping_1 = sparsity_mapping_1[1:]
 
     sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
     sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
 
     for subtract_interval in sparsity_mapping_2:
-        sparsity_mapping_1 = subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval)
+        sparsity_mapping_1 = subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval, resample_freq)
     
     return "/" + sparsity_mapping_1
 
@@ -102,20 +146,23 @@ domain: string
 subtraction_interval: string
     An interval string of the form YYYY-MM-DD|YYYY-MM-DD
 
+resample_freq: string
+    The resample frequency of the input intervals
+
 Returns
 -------
 difference: string
     Sparsity mapping string representing the difference between the domain and subtraction_interval
 
 """
-def subtract_continuous_interval_from_domain(domain, subtraction_interval):
+def subtract_continuous_interval_from_domain(domain, subtraction_interval, resample_freq):
     domain = domain.split("/")
     domain = [i for i in domain if i != ""]
 
     all_intervals = []
 
     for continuous_interval in domain:
-        difference = subtract_continuous_intervals(continuous_interval, subtraction_interval)
+        difference = subtract_continuous_intervals(continuous_interval, subtraction_interval, resample_freq)
         all_intervals.append(difference)
 
     all_intervals = [i for i in all_intervals if i != ""]
@@ -144,6 +191,8 @@ interval1: string
 interval2: string
     Continuous interval to be subtracted in sparsity mapping string notation
 
+resample_freq: string
+    The resample frequency of the input intervals
     
 Returns
 -------
@@ -152,8 +201,16 @@ updated_interval: string
     A new interval in sparsity mapping string format
 
 
+Notes
+-----
+The resample frequency is included to prevent the creation of open intervals.
+Subtracting a closed interval from a closed interval results in an open interval.
+However, since the datapoints are discrete, we can easily convert between open and closed
+intervals by adding / subtracting one resample_freq.
+
+
 """
-def subtract_continuous_intervals(interval1, interval2):
+def subtract_continuous_intervals(interval1, interval2, resample_freq):
     interval1 = interval1.split("|")
     interval2 = interval2.split("|")
 
@@ -164,12 +221,12 @@ def subtract_continuous_intervals(interval1, interval2):
         return ""
 
     if interval1[0] <= interval2[0] and interval2[1] <= interval1[1]:
-        return f"{interval1[0]}|{interval2[0]}/{interval2[1]}|{interval1[1]}"
+        return f"{interval1[0]}|{increment(interval2[0], resample_freq, decrement=True)}/{increment(interval2[1], resample_freq)}|{interval1[1]}"
     
     if interval1[0] >= interval2[0]:
-        return f"{interval2[1]}|{interval1[1]}"
+        return f"{increment(interval2[1], resample_freq)}|{interval1[1]}"
     
-    return f"{interval1[0]}|{interval2[0]}"
+    return f"{interval1[0]}|{increment(interval2[0], resample_freq, decrement=True)}"
 
     """
     Here are the cases:

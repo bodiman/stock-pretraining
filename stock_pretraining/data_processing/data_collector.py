@@ -10,7 +10,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import StockData, StockDomains
+from ..models import StockData, StockDomains, resample_options
 
 import uuid
 
@@ -80,7 +80,7 @@ class DataCollector():
     None
 
     """
-    def set_data(self, tickers, start_date, end_date, resample_freq="daily", overwrite_existing=False, debug=True):
+    def set_data(self, tickers, start_date, end_date, resample_freq=resample_options["days"], overwrite_existing=False, debug=True):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Token {self.api_key}'
@@ -92,8 +92,8 @@ class DataCollector():
 
             assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
-            if overwrite_existing:
-                self.delete_data([ticker], start_date, end_date, resample_freq='daily')
+            if overwrite_existing and existing_domain:
+                self.delete_data([ticker], start_date, end_date, resample_freq=resample_options["days"])
 
             if existing_domain:
                 new_domain = update_domain(existing_domain.sparsity_mapping, start_date, end_date)  
@@ -148,7 +148,7 @@ class DataCollector():
     tickers: []String
         A list of tickers to collect
 
-    resample_freq: Enum("daily", "monthly", "annually")
+    resample_freq: resample_options.member
         The interval between data collection instances
 
     start_date: string
@@ -167,9 +167,9 @@ class DataCollector():
     None
 
     """
-    def collect_data(self, tickers, start_date, end_date, resample_freq="daily", debug=True):
+    def collect_data(self, tickers, start_date, end_date, resample_freq=resample_options["days"], debug=True):
         total_domain = update_domain("/", start_date, end_date) 
-
+        
         for ticker in tickers:
             existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
             
@@ -178,13 +178,15 @@ class DataCollector():
             else:
                 existing_domain = "/"
             
-            domain_to_update = subtract_domain(total_domain, existing_domain)
+            domain_to_update = subtract_domain(total_domain, existing_domain, resample_freq=resample_freq)
+            print("ran", domain_to_update)
             domain_to_update = domain_to_update[1:].split("/")
             domain_to_update = [i for i in domain_to_update if i != ""]
 
+
             for interval in domain_to_update:
                 start, end = interval.split("|")
-                self.set_data([ticker], start, end, resample_freq=resample_freq, debug=debug)
+                self.set_data([ticker], start, end, resample_freq=resample_freq, overwrite_existing=True, debug=debug)
 
 
         """
@@ -203,7 +205,7 @@ class DataCollector():
     tickers: []String
         A list of tickers to delete
 
-    resample_freq: Enum("daily", "monthly", "annually")
+    resample_freq: resample_options.member
         The resample frequency for the data being deleted
 
     start_date: string
@@ -215,7 +217,7 @@ class DataCollector():
     """
     def delete_data(self, tickers, start_date, end_date, resample_freq):
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date < StockData.stock_datetime, StockData.stock_datetime < end_date)
+            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
             existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
 
             existing_rows.delete()
@@ -229,11 +231,12 @@ class DataCollector():
 
             new_domain = subtract_domain(existing_domain, deletion_domain)
 
-            if new_domain == "/":
-                self.session.delete(existing_md)
+            if existing_md:
+                if new_domain == "/":
+                    self.session.delete(existing_md)
 
-            else:
-                existing_md.sparsity_mapping = new_domain
+                else:
+                    existing_md.sparsity_mapping = new_domain
 
             self.session.commit()
             
