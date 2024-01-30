@@ -1,6 +1,6 @@
-from stock_pretraining.data_processing import DataCollector, SequentialLoader, resample_options, increment
+from stock_pretraining.data_processing import TiingoCollector, SequentialLoader, resample_options
 
-dataloader = DataCollector()
+dataloader = TiingoCollector()
 
 
 # dataloader.delete_data(["IBM"], "2018-01-03", "2025-12-30", resample_freq="daily")
