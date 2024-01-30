@@ -12,7 +12,7 @@ import uuid
 from .utils import update_domain, subtract_domain
 
 from sqlalchemy.exc import IntegrityError
-
+import uuid
 from abc import abstractmethod, ABC
 
 class DataCollector(ABC):
@@ -25,30 +25,20 @@ class DataCollector(ABC):
 
     
     """
-    Set configuration for DataCollector instance
+    Set configuration for DataCollector instance.
+    
+    Notes
+    -----
+    Must include database_url.
     """
     @abstractmethod
     def set_config(self, config):
         pass
-        # if not config:
-        #     config = {}
-
-        # if not "api_key" in config.keys():
-        #     config['api_key'] = get_env_variable("TIINGO_API_KEY")
-
-        # if not "database_url" in config.keys():
-        #     config['database_url'] = get_env_variable("database_url")
-
-        # assert "api_key" in config.keys(), "You must either specify an api_key in your configuration or include a TIINGO_API_KEY as an environment variable."
-        # assert "database_url" in config.keys(), "You must either specify a database_url in your configuration or include a database_url as an environment variable."
-        
-        # self.api_key = config['api_key']
-        # self.database_url = config['database_url']
 
 
 
     """
-    Abstract function that collects indicators for tickers between a specified timerange. 
+    Abstract function that retrieves indicators for a particular stock over a continuous time interval.
 
     Parameters
     ----------
@@ -88,40 +78,15 @@ class DataCollector(ABC):
     @abstractmethod
     def retrieve_data(self, ticker, start_date, end_date, resample_freq=resample_options["days"]):
         pass
-        # headers = {
-        #     'Content-Type': 'application/json',
-        #     'Authorization': f'Token {self.api_key}'
-        # }
-
-        # response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
-        # if response.is_error or "Error" in response.text:
-        #     return f'Failed to retrieve data for {ticker} with the following response: "{response.text}".'
-
-        # df = pd.read_csv(StringIO(response.text), sep=",")
-
-        # df = df.rename(columns={
-        #     'date': 'stock_datetime',
-        #     'adjVolume': 'stock_adj_volume',
-        #     'adjClose': 'stock_adj_close',
-        #     'adjHigh': 'stock_adj_high',
-        #     'adjLow': 'stock_adj_low',
-        #     'adjOpen': 'stock_adj_open',
-        # })
-        # df['ticker'] = ticker
-        # df['resample_freq'] = resample_freq
-        # df['id'] = [uuid.uuid4() for _ in range(len(df))]
-        # df = df[['id', 'ticker', 'resample_freq', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
-
-        # return df
     
     """
-    Writes data to the database and updates domain accordingly.
+    Sets indicators for a particular stock over a continuous time interval.
 
     Parameters
     ----------
 
-    tickers: string
-        A list of tickers to collect
+    ticker: string
+        Ticker to set
 
     start_date: string
         The date to begin data collection in the format YYYY-MM-DD
@@ -256,22 +221,6 @@ class DataCollector(ABC):
 
                 self.set_data(ticker, start_date=start, end_date=end, resample_freq=resample_freq, overwrite_existing=True, debug=debug, existing_domain=existing_domain, **kwargs)
 
-
-        """
-        1. Get current domain
-        2. Get new domain
-        3. Take new domain - current domain to get the sparsity mapping of the times you need to update
-        4. For each interval in the new domain, call set_data over the interval
-
-
-        Here's the issue
-
-        update_domain is being called on an open interval that has been converted into a closed interval
-        update_domain doesn't know that it is an open interval
-        We need to convert this back into an open interval before calling
-
-        1. When updating, it is unclear what the resample_freq is 
-        """
     
     """
     Delete data from the database.
