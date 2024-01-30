@@ -1,4 +1,4 @@
-# stockprogram
+# Stock Pretraining
 
 A pipeline for creating pretrained transformer models for Stock Market prediction. Supports
 
