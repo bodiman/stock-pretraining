@@ -64,13 +64,13 @@ new_domains: string ??? Note: May be better to do this in a separate function un
     A sparsity mapping string representing the difference between The updated string and the input string
 
 """
-def update_domain(sparsity_mapping, start, stop):
+def update_domain(sparsity_mapping, start, stop, resample_freq=resample_options["days"]):
     sparsity_mapping_array = sparsity_mapping[1:].split("/")
     sparsity_mapping_array = [i for i in sparsity_mapping_array if i != ""]
     new_sparsity_mapping_array = []
 
     for interval in [interval_string.split("|") for interval_string in sparsity_mapping_array]:
-        if intervals_intersect(interval, [start, stop]):
+        if intervals_intersect(interval, [start, stop], resample_freq):
             start = min(start, interval[0])
             stop = max(stop, interval[1])
 
@@ -90,6 +90,7 @@ def update_domain(sparsity_mapping, start, stop):
         4. If there is an intersection, absorb the domain into the start and stop and remove it from the list
 
     5. Sort the list by starting date and combine into sparsity mapping string
+    6. Loop through final result. If the difference between and end and a start is less than a time unit, combine the two
     """
 
 
@@ -108,6 +109,9 @@ sparsity_mapping_2: string
 resample_freq: string
     The resample frequency of the input intervals
 
+return_closed: boolean
+    Weather to automatically convert the subtracted intervals into closed intervals
+
 Returns
 -------
 
@@ -115,14 +119,17 @@ difference: string
     Sparsity mapping string representing the difference between the two domains
 
 """
-def subtract_domain(sparsity_mapping_1, sparsity_mapping_2, resample_freq="daily"):
+def subtract_domain(sparsity_mapping_1, sparsity_mapping_2, resample_freq=None, return_closed=True):
+    if return_closed:
+        assert resample_freq is not None, "resample_freq must be provided if return closed is set to True"
+
     sparsity_mapping_1 = sparsity_mapping_1[1:]
 
     sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
     sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
 
     for subtract_interval in sparsity_mapping_2:
-        sparsity_mapping_1 = subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval, resample_freq)
+        sparsity_mapping_1 = subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval, resample_freq, return_closed)
     
     return "/" + sparsity_mapping_1
 
@@ -149,20 +156,23 @@ subtraction_interval: string
 resample_freq: string
     The resample frequency of the input intervals
 
+return_closed: boolean
+    Weather to automatically convert the subtracted intervals into closed intervals
+
 Returns
 -------
 difference: string
     Sparsity mapping string representing the difference between the domain and subtraction_interval
 
 """
-def subtract_continuous_interval_from_domain(domain, subtraction_interval, resample_freq):
+def subtract_continuous_interval_from_domain(domain, subtraction_interval, resample_freq, return_closed):
     domain = domain.split("/")
     domain = [i for i in domain if i != ""]
 
     all_intervals = []
 
     for continuous_interval in domain:
-        difference = subtract_continuous_intervals(continuous_interval, subtraction_interval, resample_freq)
+        difference = subtract_continuous_intervals(continuous_interval, subtraction_interval, resample_freq, return_closed)
         all_intervals.append(difference)
 
     all_intervals = [i for i in all_intervals if i != ""]
@@ -193,6 +203,9 @@ interval2: string
 
 resample_freq: string
     The resample frequency of the input intervals
+
+return_closed: boolean
+    Weather to automatically convert the subtracted intervals into closed intervals
     
 Returns
 -------
@@ -208,25 +221,35 @@ Subtracting a closed interval from a closed interval results in an open interval
 However, since the datapoints are discrete, we can easily convert between open and closed
 intervals by adding / subtracting one resample_freq.
 
+Also, it should be noted that subtract_continuous intervals may return an interval
+
 
 """
-def subtract_continuous_intervals(interval1, interval2, resample_freq):
+def subtract_continuous_intervals(interval1, interval2, resample_freq, return_closed):
     interval1 = interval1.split("|")
     interval2 = interval2.split("|")
 
-    if not intervals_intersect(interval1, interval2):
+    if not intervals_intersect(interval1, interval2, resample_freq):
         return  f"{interval1[0]}|{interval1[1]}"
     
     if interval2[0] <= interval1[0] and interval1[1] <= interval2[1]:
         return ""
 
-    if interval1[0] <= interval2[0] and interval2[1] <= interval1[1]:
-        return f"{interval1[0]}|{increment(interval2[0], resample_freq, decrement=True)}/{increment(interval2[1], resample_freq)}|{interval1[1]}"
+    #1 is proper subset
+    if interval1[0] < interval2[0] and interval2[1] < interval1[1]:
+        if return_closed:
+            return f"{interval1[0]}|{increment(interval2[0], resample_freq, decrement=True)}/{increment(interval2[1], resample_freq)}|{interval1[1]}"
+        return f"{interval1[0]}|{interval2[0]}/{interval2[1]}|{interval1[1]}"
     
+    #one starts in front of the other
     if interval1[0] >= interval2[0]:
-        return f"{increment(interval2[1], resample_freq)}|{interval1[1]}"
+        if return_closed:
+            return f"{increment(interval2[1], resample_freq, decrement=True)}|{interval1[1]}"
+        return f"{interval2[1]}|{interval1[1]}"
     
-    return f"{interval1[0]}|{increment(interval2[0], resample_freq, decrement=True)}"
+    if return_closed:
+        return f"{interval1[0]}|{increment(interval2[0], resample_freq)}"
+    return f"{interval1[0]}|{interval2[0]}"
 
     """
     Here are the cases:
@@ -237,7 +260,7 @@ def subtract_continuous_intervals(interval1, interval2, resample_freq):
     2. Interval 1 is a subset of interval 2
         Return ""
 
-    3. Interval 2 is a subset of interval 1
+    3. Interval 2 is a proper subset of interval 1
         Produce two new intervals, (interval1[0], interval2[0]) and (interval2[1], interval1[1])
 
     4. Interval 1 and interval 2 overlap, but neither properly contains the other:
@@ -258,14 +281,22 @@ interval1: tuple(string, string)
 interval2: tuple(string, string)
     A continuous interval in YYYY-MM-DD format
 
+unit: resample_options.member
+    The minimum descrete unit for intervals
+
 Returns
 -------
 
 intersects: bool
     Weather the intervals intersect
 """
-def intervals_intersect(interval1, interval2):
+def intervals_intersect(interval1, interval2, unit):
     s1, e1 = interval1
     s2, e2 = interval2
 
-    return not (e1 <= s2 or s1 >= e2)
+    return not (e1 < increment(s2, unit=unit, decrement=True) or increment(s1, unit=unit, decrement=True) > e2)
+
+
+"""
+s1 s2 e1 e1 e2
+"""

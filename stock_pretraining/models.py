@@ -56,7 +56,7 @@ class StockDomains(Base):
                 start_date = parse(continuous_interval[0])
                 stop_date = parse(continuous_interval[1])
 
-                assert running_date == None or start_date >= running_date
+                assert running_date == None or start_date > running_date
                 assert stop_date >= start_date
                 
                 running_date = stop_date
