@@ -110,18 +110,11 @@ class DataCollector():
         df['resample_freq'] = resample_freq
         df['id'] = [uuid.uuid4() for _ in range(len(df))]
         df = df[['id', 'ticker', 'resample_freq', 'stock_datetime', 'stock_adj_volume', 'stock_adj_open', 'stock_adj_close', 'stock_adj_high', 'stock_adj_low']]
-        df.to_sql("stock_data", self.engine, if_exists='append', index=False)
 
-        return True
+        return df
     
 
-    def set_data2(self, ticker, start_date, end_date, start_domain=None, end_domain=None, overwrite_existing=False, resample_freq=resample_options["days"], debug=True):
-        if start_domain is None:
-            start_domain = start_date
-        
-        if end_domain is None:
-            end_domain = end_date
-        
+    def set_data2(self, ticker, start_date, end_date, overwrite_existing=False, resample_freq=resample_options["days"], debug=True):        
         #get existing domain and data
         existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
         existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
@@ -134,30 +127,33 @@ class DataCollector():
             self.delete_data([ticker], start_date, end_date, resample_freq=resample_options["days"])
         
         #retrieve values, abstract function
-        success = self.set_data(ticker, start_date=start_date, end_date=end_date, resample_freq=resample_freq, debug=debug)
+        df = self.set_data(ticker, start_date=start_date, end_date=end_date, resample_freq=resample_freq, debug=debug)
 
         #update domain based on success
-        if existing_domain and success:
-                new_domain = update_domain(existing_domain.sparsity_mapping, start_domain, end_domain)  
+        if isinstance(df, pd.DataFrame):
+            df.to_sql("stock_data", self.engine, if_exists='append', index=False)
+
+            if existing_domain:
+                new_domain = update_domain(existing_domain.sparsity_mapping, start_date, end_date)  
                 existing_domain.sparsity_mapping = new_domain
                 self.session.commit()
             
+            else:
+                new_domain = update_domain("/", start_date, end_date) 
+
+                domain = pd.DataFrame({
+                    'ticker': ticker,
+                    'resample_freq': resample_freq,
+                    'sparsity_mapping': new_domain
+                }, index=[0])
+
+                domain['id'] = [uuid.uuid4() for _ in range(len(domain))]
+                domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
+                
         elif existing_domain:
             new_domain = subtract_domain(existing_domain.sparsity_mapping, f"/{start_date}/{end_date}", resample_freq=resample_freq, return_closed=True)  
             existing_domain.sparsity_mapping = new_domain
             self.session.commit()       
-
-        elif success:
-            new_domain = update_domain("/", start_date, end_date) 
-
-            domain = pd.DataFrame({
-                'ticker': ticker,
-                'resample_freq': resample_freq,
-                'sparsity_mapping': new_domain
-            }, index=[0])
-
-            domain['id'] = [uuid.uuid4() for _ in range(len(domain))]
-            domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
 
 
 
@@ -213,20 +209,15 @@ class DataCollector():
             total_domain = update_domain(existing_domain, start_date, end_date)                 
 
             dates_to_update = subtract_domain(total_domain, existing_domain, resample_freq=resample_freq, return_closed=True)
-            domain_to_update = subtract_domain(total_domain, existing_domain, resample_freq=resample_freq, return_closed=False)
 
             dates_to_update = dates_to_update[1:].split("/")
             dates_to_update = [i for i in dates_to_update if i != ""]
 
-            domain_to_update = domain_to_update[1:].split("/")
-            domain_to_update = [i for i in domain_to_update if i != ""]
-
             #call set_data2, setting the data and presumably updating the domains appropriately
-            for dateinterval, domaininterval in zip(dates_to_update, domain_to_update):
+            for dateinterval in dates_to_update:
                 start, end = dateinterval.split("|")
-                start_domain, end_domain = domaininterval.split("|")
 
-                self.set_data2(ticker, start_date=start, end_date=end, start_domain=start_domain, end_domain=end_domain, resample_freq=resample_freq, overwrite_existing=True, debug=debug)
+                self.set_data2(ticker, start_date=start, end_date=end, resample_freq=resample_freq, overwrite_existing=True, debug=debug)
 
 
         """

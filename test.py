@@ -3,14 +3,13 @@ from stock_pretraining.data_processing import DataCollector, SequentialLoader, r
 dataloader = DataCollector()
 
 
-# dataloader.delete_data(["QQQ"], "2018-01-03", "2025-12-30", resample_freq="daily")
+# dataloader.delete_data(["IBM"], "2018-01-03", "2025-12-30", resample_freq="daily")
 
-print("1")
-# dataloader.collect_data(["QQQ"], "2019-01-02", "2020-01-03", resample_freq="daily")
+# dataloader.collect_data(["IBM"], "2023-09-01", "2024-01-27", resample_freq="daily")
+dataloader.delete_data(["IBM"], "2023-11-01", "2023-11-27", resample_freq="daily")
+dataloader.collect_data(["IBM"], "2023-11-01", "2023-11-27", resample_freq="daily")
 
-print("2")
-
-dataloader.collect_data(["QQQ"], "2019-01-03", "2019-12-31", resample_freq="daily")
+# dataloader.collect_data(["QQQ"], "2019-01-04", "2019-12-31", resample_freq="daily")
 
 # print("3")
 # dataloader.collect_data(["QQQ"], "2019-01-03", "2019-12-31", resample_freq="daily")
