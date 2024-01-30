@@ -12,6 +12,7 @@ A pipeline for creating pretrained transformer models for Stock Market predictio
 
 ```
 python=3.11.6
+psql=14.10
 ```
 
 # # Getting Started
@@ -34,28 +35,54 @@ To set up the database, run
 This will create two tables in the database: stock_data and stock_domains.
 
 stock_data is used to track the End of Day values loaded into the database.
-stock_domains tracks the data intervals tracked by the database stored as a sparisty mapping string
+stock_domains tracks the data intervals tracked by the database stored as a sparisty mapping string.
 
 
-## Data Loading
+## Data Collectors
 
-The DataCollector class is the object through which data should be inserted and deleted into the database. It tracks not only the data itself, but also the ranges of data that have been loaded into the database.
+Data collectors are the class instances through which you can interact with your database. They track the domains over which data has been collected and prevent overwriting existing data or loading duplicate data into the database.
 
-To load data into your database, run the following:
+Currently, the following data collectors are available:
+    - TiingoCollector
+
+As an example, to load data into your database using the TiingoCollector, you would run the following:
 ```
-from stock_pretraining.data_loading import DataCollector
+from stock_pretraining.data_processing import TiingoCollector, resample_options
 
-data_collector = DataCollector()
-data_collector.collect_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq="daily")
+data_collector = TiingoCollector()
+data_collector.collect_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq=resample_options["days"])
 ```
 
-This will populate the database with all EOD data for the SPY ETF between 2019 and 2021 available through the Tiingo API. It will not overwrite existing data.
+This will populate the database with daily incremented End of Day data for the SPY ETF between 2019 and 2021 available through the Tiingo API. It will not overwrite existing data.
 
 
 To delete data from the database, run
 ```
-data_collector.delete_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq="daily")
+data_collector.delete_data(["SPY"], "2019-01-01", "2021-01-01", resample_freq=resample_options["days"])
 ```
+
+## Custom Data Collectors
+
+You may create custom data collectors by extending the DataCollector class. Here is an example.
+
+```
+from stock_pretraining.data_processing import DataCollector
+
+class CustomCollector(DataCollector):
+    def __init__(self, config=None):
+        super().__init__(config)
+
+    def set_config(self):
+        self.database_url = getlocal("my_url")
+    
+    def retrieve_data(self, ticker, start_date, end_date, resample_freq=resample_options["days"]):
+        #return data as pd.DataFrame
+```
+
+## Resample Options
+resample_options is an enum defined in models.py that specifies the resample_frequencies allowed in the database. It is formatted as a dictionary. Values may be whatever the api you are using requires, but the keys must be consistent with the keyword arguments of the relativedelta function from the python dateutils library.
+
+See more at: https://dateutil.readthedocs.io/en/stable/relativedelta.html
 
 # # Sparsity Mapping Strings
 

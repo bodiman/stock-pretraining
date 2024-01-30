@@ -1,4 +1,4 @@
-from stock_pretraining.data_processing import TiingoCollector, SequentialLoader, resample_options
+from stock_pretraining.data_processing import DataCollector, TiingoCollector, SequentialLoader, resample_options
 
 dataloader = TiingoCollector()
 
