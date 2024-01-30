@@ -54,14 +54,15 @@ start: string 'YYYY-MM-DD'
 stop: string 'YYYY-MM-DD'
     The stop date of the new domain entry
 
+resample_freq: string
+    The resample frequency of the input intervals
+
 Returns
 -------
 
 updated_sparsity_mapping: string
     The updated sparsity mapping string
 
-new_domains: string ??? Note: May be better to do this in a separate function unless there is a way to do both efficiently
-    A sparsity mapping string representing the difference between The updated string and the input string
 
 """
 def update_domain(sparsity_mapping, start, stop, resample_freq=resample_options["days"]):
