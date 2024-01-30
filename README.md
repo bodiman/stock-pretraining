@@ -15,15 +15,11 @@ python=3.11.6
 psql=14.10
 ```
 
-# # Getting Started
-
-In your .env file, provide your Tiingo API key and a database url.
-If you do not have a Tiingo account, create one at https://www.tiingo.com
+## Database Setup
 
 ```
 #.env
 
-TIINGO_API_KEY=
 database_url=database://user:password@host:port/stock_program_database
 
 ```
@@ -45,7 +41,8 @@ Data collectors are the class instances through which you can interact with your
 Currently, the following data collectors are available:
     - TiingoCollector
 
-As an example, to load data into your database using the TiingoCollector, you would run the following:
+As an example, to load data into your database using the TiingoCollector, you would first set TIINGO_API_KEY as an environment variable, then run the following:
+
 ```
 from stock_pretraining.data_processing import TiingoCollector, resample_options
 
