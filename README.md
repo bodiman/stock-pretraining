@@ -1,8 +1,14 @@
 # Stock Pretraining
 
-A pipeline for creating pretrained transformer models for Stock Market prediction. Supports
+A pipeline for creating pretrained transformer models for Stock Market prediction. 
 
-1. Collection of Sequential Price Data available through the Tiingo API
+### Currently Supports
+
+1. Collection of EOD Data available through the Tiingo API and metadata tracking
+2. Custom data collectors
+
+### Coming Soon
+1. Sequential data loading
 2. Stock Embedding generation
 3. Pretraining on large sequential prediction tasks
 4. Reinforcement learning for trading strategy optimization
