@@ -30,8 +30,7 @@ To set up the database, run
 
 This will create two tables in the database: stock_data and stock_domains.
 
-stock_data is used to track the End of Day values loaded into the database.
-stock_domains tracks the data intervals tracked by the database stored as a sparisty mapping string.
+stock_data is used to track the End of Day values loaded into the database. stock_domains tracks known data intervals stored as a sparisty mapping string.
 
 
 ## Data Collectors
