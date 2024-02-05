@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Float, String, Date, Enum as SAEnum, UniqueConstraint
 
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID as pgUUID
 
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, declarative_base
 
 import uuid
 

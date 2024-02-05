@@ -37,7 +37,7 @@ def increment(datestr, unit, decrement = False):
     if parsed.hour == 0 and parsed.minute == 0:
         return str(parsed.date())
 
-    return str(parsed.date()) + str(parsed.time())
+    return f"{str(parsed.date())} {str(parsed.time())}"
 
 """
 Updates the sparsity mapping string of a stock domain by adding a new time interval
