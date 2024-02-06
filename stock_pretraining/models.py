@@ -8,12 +8,10 @@ import uuid
 
 from dateutil.parser import parse
 
-#Key names should match keywordargs for timedelta
-resample_options = {
-    "days": "daily",
-    "months": "monthly",
-    "years": "annually"
-}
+from enum import Enum as PythonEnum
+
+resample_options = PythonEnum('resample_options', ["days", "months", "years"])
+
 
 Base = declarative_base()
 
@@ -22,7 +20,7 @@ class StockData(Base):
 
     id = Column(pgUUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     ticker = Column(String)
-    resample_freq = Column(SAEnum(*[key for key in resample_options.values()], name="resample_options"))
+    resample_freq = Column(SAEnum(resample_options, name="resample_options"))
     stock_datetime = Column(Date)
     stock_adj_volume = Column(Float)
     stock_adj_open = Column(Float)

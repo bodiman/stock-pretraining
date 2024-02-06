@@ -13,6 +13,12 @@ class TiingoCollector(DataCollector):
     def __init__(self, config=None):
         super().__init__(config)
 
+        self.resample_map = {
+            "day": "daily",
+            "month": "monthly",
+            "year": "annually"
+        }
+
     def set_config(self, config=None):
         if not config:
             config = {}
@@ -29,7 +35,10 @@ class TiingoCollector(DataCollector):
         self.api_key = config['api_key']
         self.database_url = config['database_url']
 
-    def retrieve_data(self, ticker, start_date, end_date, resample_freq=resample_options["days"]):
+    def retrieve_data(self, ticker, start_date, end_date, resample_freq=None):
+        if resample_freq is None:
+            resample_freq = self.resample_map["day"]
+
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Token {self.api_key}'

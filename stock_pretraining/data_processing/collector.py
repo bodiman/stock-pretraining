@@ -9,7 +9,7 @@ from ..models import StockData, StockDomains, resample_options
 
 import uuid
 
-from .utils import update_domain, subtract_domain
+from .utils import SparsityMappingString
 
 from sqlalchemy.exc import IntegrityError
 import uuid
@@ -23,6 +23,11 @@ class DataCollector(ABC):
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
+    def str_to_date():
+        pass
+
+    def date_to_str():
+        pass
     
     """
     Set configuration for DataCollector instance.
@@ -76,7 +81,7 @@ class DataCollector(ABC):
 
     """
     @abstractmethod
-    def retrieve_data(self, ticker, start_date, end_date, resample_freq=resample_options["days"]):
+    def retrieve_data(self, ticker, start_date, end_date, resample_freq):
         pass
     
     """
@@ -113,7 +118,7 @@ class DataCollector(ABC):
     None
 
     """
-    def set_data(self, ticker, start_date, end_date, overwrite_existing=False, resample_freq=resample_options["days"], debug=True, existing_domain=True, **kwargs):        
+    def set_data(self, ticker, start_date, end_date, resample_freq, overwrite_existing=False, debug=True, existing_domain=True, **kwargs):        
         #get existing data
         existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
         if isinstance(existing_domain, bool):
@@ -125,7 +130,7 @@ class DataCollector(ABC):
 
         #if overwriting, delete the data
         if existing_domain and overwrite_existing:
-            self.delete_data([ticker], start_date, end_date, resample_freq=resample_options["days"])
+            self.delete_data([ticker], start_date, end_date, resample_freq)
         
         #retrieve values, abstract function
         conditional_df = self.retrieve_data(ticker, start_date=start_date, end_date=end_date, resample_freq=resample_freq, **kwargs)
@@ -196,7 +201,7 @@ class DataCollector(ABC):
     None
 
     """
-    def collect_data(self, tickers, start_date, end_date, resample_freq=resample_options["days"], debug=True, **kwargs):
+    def collect_data(self, tickers, start_date, end_date, resample_freq, debug=True, **kwargs):
 
         for ticker in tickers:
             #get existing domain
