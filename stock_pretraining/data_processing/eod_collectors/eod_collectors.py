@@ -1,17 +1,17 @@
 from stock_pretraining.environment import get_env_variable
-from .collector import DataCollector
+from stock_pretraining.data_processing.eod_collectors.abstract_eod_collector import EODCollector
 
 import httpx
 from io import StringIO
 
-from stock_pretraining.schemas.eod_date_model import resample_options
+from stock_pretraining.schemas.eod_model import resample_options
 
 import pandas as pd
 import uuid
 
 from datetime import datetime
 
-class TiingoCollector(DataCollector):
+class TiingoCollector(EODCollector):
     def __init__(self, config=None):
         super().__init__(config)
 

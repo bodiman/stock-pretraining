@@ -98,7 +98,7 @@ class SparsityMappingString():
         for subtract_interval in sparsity_mapping_2:
             date_interval = subtract_interval.split("|")
             date_interval = [self.str_to_date(date_interval[0]), self.str_to_date(date_interval[1])]
-            sparsity_mapping_1 = self.add_continuos_interval_to_domain(sparsity_mapping_1, date_interval)
+            sparsity_mapping_1 = self.add_continuos_interval_to_domain(f"/{sparsity_mapping_1}", date_interval)
 
         return SparsityMappingString(resample_freq=self.resample_freq, string=sparsity_mapping_1)
 

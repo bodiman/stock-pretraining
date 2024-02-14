@@ -4,19 +4,19 @@ import pandas as pd
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
-from stock_pretraining.schemas.eod_date_model import StockData, StockDomains
+from stock_pretraining.schemas.eod_model import EOD_Date_Model
 from stock_pretraining.data_processing.sparsity_mapping import SparsityMappingString
 
 import uuid
-
-from sqlalchemy.exc import IntegrityError
 import uuid
 from abc import abstractmethod, ABC
 
-class DataCollector(ABC):
+class EODCollector(ABC):
     def __init__(self, config=None):
         self.set_config(config)
+        self.resample_options = EOD_Date_Model.resample_options
 
         self.engine = create_engine(self.database_url)
         Session = sessionmaker(bind=self.engine)
@@ -31,7 +31,7 @@ class DataCollector(ABC):
         pass
     
     """
-    Set configuration for DataCollector instance.
+    Set configuration for EODCollector instance.
     
     Notes
     -----
@@ -125,12 +125,12 @@ class DataCollector(ABC):
         interval_domain = SparsityMappingString(resample_freq=resample_freq, string=f"/{start_date}|{end_date}")
 
         #get existing data
-        existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
-        existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+        existing_rows = self.session.query(EOD_Date_Model.StockData).filter(EOD_Date_Model.StockData.ticker == ticker, EOD_Date_Model.StockData.resample_freq == resample_freq, start_date <= EOD_Date_Model.StockData.stock_datetime, EOD_Date_Model.StockData.stock_datetime <= end_date)
+        existing_domain = self.session.query(EOD_Date_Model.StockDomains).filter(EOD_Date_Model.StockDomains.ticker == ticker, EOD_Date_Model.StockDomains.resample_freq == resample_freq).first()
         new_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain.sparsity_mapping if existing_domain else None)
 
         #check that either there is not an existing domain or overwrite is confirmed
-        assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
+        assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use EODCollector.collect_data()"
 
         #if overwriting, delete the data
         if overwrite_existing:
@@ -211,7 +211,7 @@ class DataCollector(ABC):
 
         for ticker in tickers:
             #get existing domain
-            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()         
+            existing_domain = self.session.query(EOD_Date_Model.StockDomains).filter(EOD_Date_Model.StockDomains.ticker == ticker, EOD_Date_Model.StockDomains.resample_freq == resample_freq).first()         
             existing_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain.sparsity_mapping if existing_domain else None)
             
             #find the domain that needs to be updated
@@ -247,8 +247,8 @@ class DataCollector(ABC):
     """
     def delete_data(self, tickers, start_date, end_date, resample_freq):
         for ticker in tickers:
-            existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
-            existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+            existing_rows = self.session.query(EOD_Date_Model.StockData).filter(EOD_Date_Model.StockData.ticker == ticker, EOD_Date_Model.StockData.resample_freq == resample_freq, start_date <= EOD_Date_Model.StockData.stock_datetime, EOD_Date_Model.StockData.stock_datetime <= end_date)
+            existing_md = self.session.query(EOD_Date_Model.StockDomains).filter(EOD_Date_Model.StockDomains.ticker == ticker, EOD_Date_Model.StockDomains.resample_freq == resample_freq).first()
 
             existing_rows.delete()
             existing_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_md.sparsity_mapping if existing_md else None)

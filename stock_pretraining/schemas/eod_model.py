@@ -14,7 +14,6 @@ from enum import Enum as PythonEnum
 
 resample_options = PythonEnum('resample_options', ["days", "months", "years"])
 
-
 Base = declarative_base()
 
 class StockData(Base):
@@ -51,16 +50,33 @@ class StockDomains(Base):
         return "/" + mapstr
     
 
+class EOD_Date_Model():
+    resample_options = resample_options
+    StockData = StockData
+    StockDomains = StockDomains
+
+    def __init__(self, database_url=None):
+        if database_url is None:
+            database_url = get_env_variable("database_url")
+
+        self.database_url = database_url
+
+    def create(self):
+        engine = create_engine(url=self.database_url)
+
+        if not database_exists(engine.url):
+            print("Creating database...")
+            create_database(engine.url)
+            print("Creating tables...")
+            Base.metadata.create_all(bind=engine)
+            print("Done.")
+        else:
+            print("Database Already Exists.")
+    
+
 if __name__ == "__main__":
-    database_url = get_env_variable("database_url")
-    engine = create_engine(url=database_url)
+    eod_database = EOD_Date_Model()
+    eod_database.create()
+    
 
-    if not database_exists(engine.url):
-        print("Creating database...")
-        create_database(engine.url)
-        print("Creating tables...")
-        Base.metadata.create_all(bind=engine)
-        print("Done.")
-
-    else:
-        print("Database Already Exists.")
+    
