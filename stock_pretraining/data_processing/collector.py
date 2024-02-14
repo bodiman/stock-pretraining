@@ -1,15 +1,14 @@
-from ..environment import get_env_variable
+from stock_pretraining.environment import get_env_variable
 
 import pandas as pd
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import StockData, StockDomains, resample_options
+from stock_pretraining.schemas.eod_date_model import StockData, StockDomains
+from stock_pretraining.data_processing.sparsity_mapping import SparsityMappingString
 
 import uuid
-
-from .utils import SparsityMappingString
 
 from sqlalchemy.exc import IntegrityError
 import uuid
@@ -118,12 +117,15 @@ class DataCollector(ABC):
     None
 
     """
-    def set_data(self, ticker, start_date, end_date, resample_freq, overwrite_existing=False, debug=True, existing_domain=True, **kwargs):        
+    def set_data(self, ticker, start_date, end_date, resample_freq, overwrite_existing=False, debug=True, existing_domain=True, **kwargs):   
+        interval_domain = SparsityMappingString(resample_freq=resample_freq, end_date=f"/{start_date}|{end_date}")
+
         #get existing data
         existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
         if isinstance(existing_domain, bool):
             assert existing_domain, f"Existing domain must either be True or a valid query result."
-            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()  
+            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+            new_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain)  
 
         #check that either there is not an existing domain or overwrite is confirmed
         assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
@@ -131,44 +133,44 @@ class DataCollector(ABC):
         #if overwriting, delete the data
         if existing_domain and overwrite_existing:
             self.delete_data([ticker], start_date, end_date, resample_freq)
-        
+            new_domain -= interval_domain
+
         #retrieve values, abstract function
-        conditional_df = self.retrieve_data(ticker, start_date=start_date, end_date=end_date, resample_freq=resample_freq, **kwargs)
+        try:
+            conditional_df = self.retrieve_data(ticker, start_date=start_date, end_date=end_date, resample_freq=resample_freq, **kwargs)
 
-        #update domain based on success
-        if isinstance(conditional_df, pd.DataFrame):
-            try:
-                conditional_df.to_sql("stock_data", self.engine, if_exists='append', index=False)
-            except IntegrityError as err:
-                if debug:
-                    print("Error: Improperly formatted dataframe recieved from retrieved_data. See details:")
-                    print(err)
+            if isinstance(conditional_df, pd.DataFrame):
+                try:
+                    conditional_df.to_sql("stock_data", self.engine, if_exists='append', index=False)
+                except IntegrityError:
+                        raise IntegrityError("Error: Improperly formatted dataframe recieved from retrieved_data. See details:")
 
-            if existing_domain:
-                new_domain = update_domain(existing_domain.sparsity_mapping, start_date, end_date)  
-                existing_domain.sparsity_mapping = new_domain
-                self.session.commit()
+                if not existing_domain.isnull:
+                    existing_domain += interval_domain
+                    existing_domain.sparsity_mapping = new_domain.string
+                    self.session.commit()
+                
+                else:
+                    new_domain = interval_domain
+                    domain = pd.DataFrame({
+                        'ticker': ticker,
+                        'resample_freq': resample_freq,
+                        'sparsity_mapping': new_domain.string
+                    }, index=[0])
+
+                    domain['id'] = [uuid.uuid4() for _ in range(len(domain))]
+                    domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
+                
             
             else:
-                new_domain = update_domain("/", start_date, end_date) 
+                raise Exception(conditional_df)
 
-                domain = pd.DataFrame({
-                    'ticker': ticker,
-                    'resample_freq': resample_freq,
-                    'sparsity_mapping': new_domain
-                }, index=[0])
 
-                domain['id'] = [uuid.uuid4() for _ in range(len(domain))]
-                domain.to_sql("stock_domains", self.engine, if_exists='append', index=False)
-                
-        else:
-            if debug:
-                print(conditional_df)
+        except Exception as e:
+            existing_domain.sparsity_mapping = existing_domain.string
+            self.session.commit()
 
-            if existing_domain:
-                new_domain = subtract_domain(existing_domain.sparsity_mapping, f"/{start_date}/{end_date}", resample_freq=resample_freq, return_closed=True)  
-                existing_domain.sparsity_mapping = new_domain
-                self.session.commit()       
+            raise Exception(f"Exception in retrieve_data: {e}")    
 
 
 
@@ -202,28 +204,21 @@ class DataCollector(ABC):
 
     """
     def collect_data(self, tickers, start_date, end_date, resample_freq, debug=True, **kwargs):
+        collection_interval = SparsityMappingString(resample_freq=resample_freq, string=f"/{start_date}|{end_date}")
 
         for ticker in tickers:
             #get existing domain
-            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()            
-
-            if existing_domain:
-                mapping = existing_domain.sparsity_mapping 
-            else:
-                mapping = "/"
+            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()         
+            existing_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain.sparsity_mapping if existing_domain else None)
             
             #find the domain that needs to be updated
-            total_domain = update_domain(mapping, start_date, end_date)                 
-
-            dates_to_update = subtract_domain(total_domain, mapping, resample_freq=resample_freq, return_closed=True)
-
-            dates_to_update = dates_to_update[1:].split("/")
-            dates_to_update = [i for i in dates_to_update if i != ""]
+            print(existing_domain.string)
+            print(collection_interval.string)
+            total_domain = existing_domain + collection_interval                 
+            dates_to_update = total_domain - existing_domain
 
             #call set_data2, setting the data and presumably updating the domains appropriately
-            for dateinterval in dates_to_update:
-                start, end = dateinterval.split("|")
-
+            for start, end in dates_to_update.get_intervals():
                 self.set_data(ticker, start_date=start, end_date=end, resample_freq=resample_freq, overwrite_existing=True, debug=debug, existing_domain=existing_domain, **kwargs)
 
     
@@ -252,22 +247,17 @@ class DataCollector(ABC):
             existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
 
             existing_rows.delete()
+            existing_domain = existing_md.get("sparsity_mapping")
+
+            deletion_domain = SparsityMappingString(resample_freq=resample_freq, string=f"/{start_date}|{end_date}")
+            new_domain = existing_domain - deletion_domain
 
             if existing_md:
-                existing_domain = existing_md.sparsity_mapping
-            else:
-                existing_domain = "/"
-
-            deletion_domain = update_domain("/", start_date, end_date)
-
-            new_domain = subtract_domain(existing_domain, deletion_domain, resample_freq=resample_freq, return_closed=True)
-
-            if existing_md:
-                if new_domain == "/":
+                if new_domain.is_null:
                     self.session.delete(existing_md)
 
                 else:
-                    existing_md.sparsity_mapping = new_domain
+                    existing_md.sparsity_mapping = new_domain.string
 
             self.session.commit()
             

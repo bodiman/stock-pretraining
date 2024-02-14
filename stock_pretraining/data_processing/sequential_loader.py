@@ -1,8 +1,8 @@
-from ..environment import get_env_variable
+from stock_pretraining.environment import get_env_variable
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from ..models import StockData
+from stock_pretraining.schemas.eod_date_model import StockData
 
 """
 I think I'll use this class to retrieve data from the database and wrap it in a pytorch dataloader.

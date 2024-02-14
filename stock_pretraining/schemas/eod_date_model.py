@@ -1,13 +1,15 @@
+from stock_pretraining.environment import get_env_variable
+
 from sqlalchemy import Column, Float, String, Date, Enum as SAEnum, UniqueConstraint
-
 from sqlalchemy.dialects.postgresql import UUID as pgUUID
-
 from sqlalchemy.orm import validates, declarative_base
+from sqlalchemy import create_engine
+from sqlalchemy_utils import database_exists, create_database
+
+from stock_pretraining.data_processing.sparsity_mapping import SparsityMappingString
 
 import uuid
-
 from dateutil.parser import parse
-
 from enum import Enum as PythonEnum
 
 resample_options = PythonEnum('resample_options', ["days", "months", "years"])
@@ -40,35 +42,25 @@ class StockDomains(Base):
     @validates("sparsity_mapping")
     def validate_sparsity_mapping(self, key, mapstr):
         try:
-            running_date = None
-
-            assert mapstr[0] == '/'
-            mapstr = mapstr[1:]
-            continuous_intervals = mapstr.split('/')
-
-            for continuous_interval_string in continuous_intervals:
-                continuous_interval = continuous_interval_string.split("|")
-                assert len(continuous_interval) == 2
-
-                start_date = parse(continuous_interval[0])
-                stop_date = parse(continuous_interval[1])
-
-                assert running_date == None or start_date > running_date
-                assert stop_date >= start_date
-                
-                running_date = stop_date
-
+            base_validator = SparsityMappingString("day")
+            base_validator.validate(mapstr)
 
         except Exception:
             raise ValueError(f"Improperly formatted sparsity mapping string /{mapstr}")
 
-        """
-        1. Remove first character
-        2. Track a running date
-        3. split strings into stretches by `/`
-            4. for each domain stretch, split it into 2 by '|'
-                5. check that there are exactly 2 elements in the list
-                6. check that the value is greater than the running date, then update the running date `/`
-        """
-
         return "/" + mapstr
+    
+
+if __name__ == "__main__":
+    database_url = get_env_variable("database_url")
+    engine = create_engine(url=database_url)
+
+    if not database_exists(engine.url):
+        print("Creating database...")
+        create_database(engine.url)
+        print("Creating tables...")
+        Base.metadata.create_all(bind=engine)
+        print("Done.")
+
+    else:
+        print("Database Already Exists.")

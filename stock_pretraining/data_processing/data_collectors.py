@@ -1,10 +1,10 @@
-from ..environment import get_env_variable
+from stock_pretraining.environment import get_env_variable
 from .collector import DataCollector
 
 import httpx
 from io import StringIO
 
-from ..models import resample_options
+from stock_pretraining.schemas.eod_date_model import resample_options
 
 import pandas as pd
 import uuid
