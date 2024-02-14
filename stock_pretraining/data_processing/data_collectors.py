@@ -9,15 +9,25 @@ from stock_pretraining.schemas.eod_date_model import resample_options
 import pandas as pd
 import uuid
 
+from datetime import datetime
+
 class TiingoCollector(DataCollector):
     def __init__(self, config=None):
         super().__init__(config)
 
         self.resample_map = {
-            "day": "daily",
-            "month": "monthly",
-            "year": "annually"
+            "days": "daily",
+            "months": "monthly",
+            "years": "annually"
         }
+
+        self.datetime_format = "%Y-%m-%d"
+
+    def date_to_str(self, date):
+        return date.strftime(self.datetime_format)
+
+    def str_to_date(self, string):
+        return datetime.strptime(string, self.datetime_format)
 
     def set_config(self, config=None):
         if not config:
@@ -44,7 +54,7 @@ class TiingoCollector(DataCollector):
             'Authorization': f'Token {self.api_key}'
         }
 
-        response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={resample_freq}&format=csv", headers=headers)
+        response = httpx.get(f"https://api.tiingo.com/tiingo/daily/{ticker}/prices?startDate={start_date}&endDate={end_date}&resampleFreq={self.resample_map[resample_freq]}&format=csv", headers=headers)
         if response.is_error or "Error" in response.text:
             return f'Failed to retrieve data for {ticker} with the following response: "{response.text}".'
 

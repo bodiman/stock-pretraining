@@ -1,16 +1,25 @@
 from stock_pretraining.data_processing.utils import increment, intervals_intersect
-from datetime import datetime, timedelta
+from datetime import datetime
+
+import copy
 
 class SparsityMappingString():
-    def __init__(self, resample_freq, string=None, date_to_str=None, str_to_date=None):
+    def __init__(self, resample_freq, string=None, date_to_str=None, str_to_date=None, datetime_format=None):
         if string is None:
             string = "/"
 
+        if datetime_format is None:
+            datetime_format = "%Y-%m-%d"
+
         if date_to_str is None:
-            date_to_str = lambda date: date.strftime("%Y-%m-%d")
+            date_to_str = lambda date: date.strftime(datetime_format)
 
         if str_to_date is None:
-            str_to_date = lambda string: datetime.strptime(string, "%Y-%m-%d")
+            str_to_date = lambda string: datetime.strptime(string, datetime_format)
+
+        self.datetime_format = datetime_format
+        self.date_to_str = date_to_str
+        self.str_to_date = str_to_date
 
         now = datetime.now()
         assert date_to_str(str_to_date(date_to_str(now))) == date_to_str(now), "str_to_date and date_to_str must provide valid back and forth conversions between date and string formats"
@@ -25,6 +34,15 @@ class SparsityMappingString():
     @property
     def is_null(self):
         return self.string != "/"
+    
+    def __add__(self, other):
+        return self.add_domain(self.string, other.string)
+    
+    def __sub__(self, other):
+        return self.subtract_domain(self.string, other.string)
+    
+    def __str__(self):
+        return self.string
 
     def get_str_intervals(self):
         string_intervals = self.string.split("/")
@@ -35,19 +53,18 @@ class SparsityMappingString():
     
     def get_intervals(self):
         string_intervals = self.get_str_intervals()
-
         date_intervals = []
         for string_interval in string_intervals:
-            start, end = string_interval.split("|")
-            date_intervals.append([self.str_to_date(start), self.str_to_date(end)])
+            date_intervals.append([self.str_to_date(string_interval[0]), self.str_to_date(string_interval[1])])
 
         return date_intervals
 
 
-    def validate(self, mapstr):
+    def validate(self, mapstring):
+        mapstr = copy.copy(mapstring)
+
         try:
             running_date = None
-
             assert mapstr[0] == '/'
             mapstr = mapstr[1:]
             continuous_intervals = mapstr.split('/')
@@ -67,28 +84,23 @@ class SparsityMappingString():
 
 
         except Exception:
-            raise ValueError(f"Improperly formatted sparsity mapping string /{mapstr}")
+            raise ValueError(f"Improperly formatted sparsity mapping string {mapstring}")
 
         return "/" + mapstr
 
-    def __add__(self, other):
-        return self.add_domain(self, other.string)
-    
-    def __sub__(self, other):
-        return self.subtract_domain(self, other.string)
 
-    def add_domain(self, sparsity_mapping_2):
-        sparsity_mapping_1 = self.string[1:]
+    def add_domain(self, sparsity_mapping_1, sparsity_mapping_2):
+        sparsity_mapping_1 = sparsity_mapping_1[1:]
 
         sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
         sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
 
         for subtract_interval in sparsity_mapping_2:
-            sparsity_mapping_1 = self.add_continuos_interval_to_domain(sparsity_mapping_1, subtract_interval)
-        
-        self.string = "/" + sparsity_mapping_1
+            date_interval = subtract_interval.split("|")
+            date_interval = [self.str_to_date(date_interval[0]), self.str_to_date(date_interval[1])]
+            sparsity_mapping_1 = self.add_continuos_interval_to_domain(sparsity_mapping_1, date_interval)
 
-        return self
+        return SparsityMappingString(resample_freq=self.resample_freq, string=sparsity_mapping_1)
 
 
     """
@@ -126,7 +138,7 @@ class SparsityMappingString():
 
         new_sparsity_mapping_array = []
         for interval in sparsity_mapping_array:
-            if intervals_intersect(interval, [start, stop], unit=self.resample_freq):
+            if intervals_intersect(interval, [start, stop], unit=self.resample_freq, datestrformat=self.datetime_format):
                 start = min(start, interval[0])
                 stop = max(stop, interval[1])
 
@@ -175,18 +187,14 @@ class SparsityMappingString():
         Sparsity mapping string representing the difference between the two domains
 
     """
-    def subtract_domain(self, sparsity_mapping_2, resample_freq=None):
-        sparsity_mapping_1 = self.string[1:]
-
+    def subtract_domain(self, sparsity_mapping_1, sparsity_mapping_2):
         sparsity_mapping_2 = sparsity_mapping_2[1:].split("/")
         sparsity_mapping_2 = [i for i in sparsity_mapping_2 if i != ""]
 
         for subtract_interval in sparsity_mapping_2:
             sparsity_mapping_1 = self.subtract_continuous_interval_from_domain(sparsity_mapping_1, subtract_interval)
         
-        self.string = "/" + sparsity_mapping_1
-
-        return self
+        return SparsityMappingString(resample_freq=self.resample_freq, string=sparsity_mapping_1)
 
         """
         1. Loop through continuous intervals in sparsity mapping 2
@@ -237,7 +245,7 @@ class SparsityMappingString():
             all_intervals.append(difference)
 
         all_intervals = [i for i in all_intervals if i != ""]
-        return "/".join(all_intervals)
+        return "/" + "/".join(all_intervals)
 
         """
         1. Loop through domain
@@ -287,7 +295,7 @@ class SparsityMappingString():
 
     """
     def subtract_continuous_intervals(self, interval1, interval2):
-        if not intervals_intersect(interval1, interval2, self.resample_freq):
+        if not intervals_intersect(interval1, interval2, unit=self.resample_freq, datestrformat=self.datetime_format):
             interval1[0] = self.date_to_str(interval1[0])
             interval1[1] = self.date_to_str(interval1[1])
 

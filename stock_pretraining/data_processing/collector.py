@@ -22,10 +22,12 @@ class DataCollector(ABC):
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
 
-    def str_to_date():
+    @abstractmethod
+    def str_to_date(*args):
         pass
 
-    def date_to_str():
+    @abstractmethod
+    def date_to_str(*args):
         pass
     
     """
@@ -117,21 +119,21 @@ class DataCollector(ABC):
     None
 
     """
-    def set_data(self, ticker, start_date, end_date, resample_freq, overwrite_existing=False, debug=True, existing_domain=True, **kwargs):   
-        interval_domain = SparsityMappingString(resample_freq=resample_freq, end_date=f"/{start_date}|{end_date}")
+    def set_data(self, ticker, start_date, end_date, resample_freq, overwrite_existing=False, debug=True, **kwargs):
+        start_date = self.date_to_str(start_date)
+        end_date = self.date_to_str(end_date)
+        interval_domain = SparsityMappingString(resample_freq=resample_freq, string=f"/{start_date}|{end_date}")
 
         #get existing data
         existing_rows = self.session.query(StockData).filter(StockData.ticker == ticker, StockData.resample_freq == resample_freq, start_date <= StockData.stock_datetime, StockData.stock_datetime <= end_date)
-        if isinstance(existing_domain, bool):
-            assert existing_domain, f"Existing domain must either be True or a valid query result."
-            existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
-            new_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain)  
+        existing_domain = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
+        new_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain.sparsity_mapping if existing_domain else None)
 
         #check that either there is not an existing domain or overwrite is confirmed
         assert len(existing_rows.all()) == 0 or overwrite_existing, f"{len(existing_rows)} existing datapoints found between start_date {start_date} and end_date {end_date}. If you wish to overwrite these rows, set overwrite_existing=True. Otherwise, use DataCollector.collect_data()"
 
         #if overwriting, delete the data
-        if existing_domain and overwrite_existing:
+        if overwrite_existing:
             self.delete_data([ticker], start_date, end_date, resample_freq)
             new_domain -= interval_domain
 
@@ -145,7 +147,7 @@ class DataCollector(ABC):
                 except IntegrityError:
                         raise IntegrityError("Error: Improperly formatted dataframe recieved from retrieved_data. See details:")
 
-                if not existing_domain.isnull:
+                if existing_domain is not None:
                     existing_domain += interval_domain
                     existing_domain.sparsity_mapping = new_domain.string
                     self.session.commit()
@@ -167,8 +169,9 @@ class DataCollector(ABC):
 
 
         except Exception as e:
-            existing_domain.sparsity_mapping = existing_domain.string
-            self.session.commit()
+            if existing_domain is not None:
+                existing_domain.sparsity_mapping = existing_domain.string
+                self.session.commit()
 
             raise Exception(f"Exception in retrieve_data: {e}")    
 
@@ -212,14 +215,15 @@ class DataCollector(ABC):
             existing_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_domain.sparsity_mapping if existing_domain else None)
             
             #find the domain that needs to be updated
-            print(existing_domain.string)
-            print(collection_interval.string)
             total_domain = existing_domain + collection_interval                 
             dates_to_update = total_domain - existing_domain
 
+            # print("total_domain", total_domain, existing_domain)
+            # print("dates_to_update", dates_to_update)
+
             #call set_data2, setting the data and presumably updating the domains appropriately
             for start, end in dates_to_update.get_intervals():
-                self.set_data(ticker, start_date=start, end_date=end, resample_freq=resample_freq, overwrite_existing=True, debug=debug, existing_domain=existing_domain, **kwargs)
+                self.set_data(ticker, start_date=start, end_date=end, resample_freq=resample_freq, overwrite_existing=True, debug=debug, **kwargs)
 
     
     """
@@ -247,7 +251,7 @@ class DataCollector(ABC):
             existing_md = self.session.query(StockDomains).filter(StockDomains.ticker == ticker, StockDomains.resample_freq == resample_freq).first()
 
             existing_rows.delete()
-            existing_domain = existing_md.get("sparsity_mapping")
+            existing_domain = SparsityMappingString(resample_freq=resample_freq, string=existing_md.sparsity_mapping if existing_md else None)
 
             deletion_domain = SparsityMappingString(resample_freq=resample_freq, string=f"/{start_date}|{end_date}")
             new_domain = existing_domain - deletion_domain
